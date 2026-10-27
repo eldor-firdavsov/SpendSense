@@ -30,10 +30,15 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // IMPORTANT: Avoid using getSession() on the server; getUser() validates the token against Supabase Auth.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    // IMPORTANT: Avoid using getSession() on the server; getUser() validates the token against Supabase Auth.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  return { supabaseResponse, user };
+    return { supabaseResponse, user };
+  } catch (err) {
+    console.error('Error in proxy updateSession:', err);
+    return { supabaseResponse, user: null };
+  }
 }

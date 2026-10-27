@@ -15,6 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SpendSense AI — Aqlli shaxsiy moliya va budjet boshqaruvi",
   description: "Shaxsiy moliya, budjet nazorati va sun’iy intellektli moliyaviy maslahatchi",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 export const instant = false;

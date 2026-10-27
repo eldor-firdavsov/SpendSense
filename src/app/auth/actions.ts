@@ -33,69 +33,90 @@ export async function registerAction(
   }
 
   const { firstName, lastName, email, password } = validated.data;
-  const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        first_name: firstName,
-        last_name: lastName,
+  try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      return {
+        success: false,
+        error:
+          'Supabase sozlamalari (Environment Variables) topilmadi. Vercel loyiha sozlamalarida (Settings > Environment Variables) NEXT_PUBLIC_SUPABASE_URL va NEXT_PUBLIC_SUPABASE_ANON_KEY ni kiriting va qayta deploy qiling.',
+      };
+    }
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    const msg = error.message.toLowerCase();
-    if (
-      msg.includes('already registered') ||
-      msg.includes('user already exists')
-    ) {
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (
+        msg.includes('already registered') ||
+        msg.includes('user already exists')
+      ) {
+        return {
+          success: false,
+          error: 'Ushbu elektron pochta manziliga ega hisob allaqachon mavjud. Iltimos, tizimga kiring.',
+        };
+      }
+      if (msg.includes('rate limit') || msg.includes('too many requests')) {
+        return {
+          success: false,
+          error: 'Juda ko‘p urinishlar qilindi. Iltimos, biroz kutib qayta urining.',
+        };
+      }
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    // If identities is empty or user already registered, Supabase sometimes returns an obfuscated user
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       return {
         success: false,
         error: 'Ushbu elektron pochta manziliga ega hisob allaqachon mavjud. Iltimos, tizimga kiring.',
       };
     }
-    if (msg.includes('rate limit') || msg.includes('too many requests')) {
-      return {
-        success: false,
-        error: 'Juda ko‘p urinishlar qilindi. Iltimos, biroz kutib qayta urining.',
-      };
-    }
-    return {
-      success: false,
-      error: error.message,
-    };
-  }
 
-  // If identities is empty or user already registered, Supabase sometimes returns an obfuscated user
-  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-    return {
-      success: false,
-      error: 'Ushbu elektron pochta manziliga ega hisob allaqachon mavjud. Iltimos, tizimga kiring.',
-    };
-  }
-
-  // Ensure active session cookie is established: if signUp did not return a session, sign in directly
-  if (!data.session) {
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (signInError) {
-      const msg = signInError.message.toLowerCase();
-      if (msg.includes('confirm') || msg.includes('not verified')) {
+    // Ensure active session cookie is established: if signUp did not return a session, sign in directly
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) {
+        const msg = signInError.message.toLowerCase();
+        if (msg.includes('confirm') || msg.includes('not verified')) {
+          return {
+            success: false,
+            error: 'Hisob yaratildi! Tizimga kirishdan oldin pochtangizni tasdiqlang.',
+          };
+        }
         return {
           success: false,
-          error: 'Hisob yaratildi! Tizimga kirishdan oldin pochtangizni tasdiqlang.',
+          error: signInError.message,
         };
       }
-      return {
-        success: false,
-        error: signInError.message,
-      };
     }
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    if (errorMsg.includes('NEXT_REDIRECT')) {
+      throw err;
+    }
+    console.error('Error in registerAction:', err);
+    return {
+      success: false,
+      error: `Ro‘yxatdan o‘tishda kutilmagan xatolik yuz berdi: ${errorMsg}`,
+    };
   }
 
   redirect('/dashboard');
@@ -120,36 +141,57 @@ export async function loginAction(
   }
 
   const { email, password } = validated.data;
-  const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      return {
+        success: false,
+        error:
+          'Supabase sozlamalari (Environment Variables) topilmadi. Vercel loyiha sozlamalarida (Settings > Environment Variables) NEXT_PUBLIC_SUPABASE_URL va NEXT_PUBLIC_SUPABASE_ANON_KEY ni kiriting va qayta deploy qiling.',
+      };
+    }
 
-  if (error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes('rate limit') || msg.includes('too many requests')) {
+    const supabase = await createClient();
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('rate limit') || msg.includes('too many requests')) {
+        return {
+          success: false,
+          error: 'Juda ko‘p urinishlar qilindi. Iltimos, biroz kutib qayta urining.',
+        };
+      }
+      if (msg.includes('email not confirmed') || msg.includes('not verified')) {
+        return {
+          success: false,
+          error: 'Elektron pochta manzilingiz tasdiqlanmagan. Iltimos, pochtangizni tekshiring.',
+        };
+      }
+      if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
+        return {
+          success: false,
+          error: 'Noto‘g‘ri elektron pochta yoki parol. Ma’lumotlaringizni tekshirib qayta urining.',
+        };
+      }
       return {
         success: false,
-        error: 'Juda ko‘p urinishlar qilindi. Iltimos, biroz kutib qayta urining.',
+        error: error.message || 'Noto‘g‘ri elektron pochta yoki parol. Qayta urining.',
       };
     }
-    if (msg.includes('email not confirmed') || msg.includes('not verified')) {
-      return {
-        success: false,
-        error: 'Elektron pochta manzilingiz tasdiqlanmagan. Iltimos, pochtangizni tekshiring.',
-      };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    if (errorMsg.includes('NEXT_REDIRECT')) {
+      throw err;
     }
-    if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
-      return {
-        success: false,
-        error: 'Noto‘g‘ri elektron pochta yoki parol. Ma’lumotlaringizni tekshirib qayta urining.',
-      };
-    }
+    console.error('Error in loginAction:', err);
     return {
       success: false,
-      error: error.message || 'Noto‘g‘ri elektron pochta yoki parol. Qayta urining.',
+      error: `Tizimga kirishda xatolik yuz berdi: ${errorMsg}`,
     };
   }
 
@@ -157,8 +199,12 @@ export async function loginAction(
 }
 
 export async function logoutAction(): Promise<void> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } catch (err) {
+    console.error('Error during logout:', err);
+  }
   redirect('/login');
 }
 

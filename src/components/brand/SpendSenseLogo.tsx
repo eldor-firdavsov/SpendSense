@@ -42,22 +42,22 @@ export default function SpendSenseLogo({
 
   // Variant: icon
   const containerSizes = {
-    sm: 'h-7 w-7 rounded-lg p-0.5',
-    md: 'h-9 w-9 rounded-xl p-1',
-    lg: 'h-12 w-12 rounded-2xl p-1.5',
-    xl: 'h-16 w-16 rounded-2xl p-2',
+    sm: 'h-7 w-7',
+    md: 'h-9 w-9',
+    lg: 'h-12 w-12',
+    xl: 'h-16 w-16',
   };
 
   const imageSizes = {
-    sm: 24,
-    md: 32,
-    lg: 44,
-    xl: 60,
+    sm: 28,
+    md: 36,
+    lg: 48,
+    xl: 64,
   };
 
   return (
     <div
-      className={`relative inline-flex items-center justify-center shrink-0 bg-[#F5ECDA] border border-[#EADBBE] shadow-xs overflow-hidden transition-transform group-hover:scale-105 ${containerSizes[size]} ${className}`}
+      className={`relative inline-flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${containerSizes[size]} ${className}`}
     >
       <Image
         src="/spendsense-icon-transparent.png"

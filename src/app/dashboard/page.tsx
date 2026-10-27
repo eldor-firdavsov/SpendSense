@@ -80,7 +80,11 @@ export default async function DashboardPage({
 
   const pad = (n: number) => String(n).padStart(2, '0');
   const availableMonths = Array.from(
-    new Set(allTransactions.map((t) => t.transaction_date.substring(0, 7)))
+    new Set(
+      allTransactions
+        .filter((t) => typeof t?.transaction_date === 'string')
+        .map((t) => t.transaction_date.substring(0, 7))
+    )
   ).sort().reverse(); // e.g. ['2026-10', '2026-09']
 
   // Determine active month key
@@ -201,8 +205,8 @@ export default async function DashboardPage({
     }
 
     // 6-Month chart bucket
-    const monthKey = txDate.substring(0, 7);
-    if (monthBuckets[monthKey]) {
+    const monthKey = typeof txDate === 'string' ? txDate.substring(0, 7) : '';
+    if (monthKey && monthBuckets[monthKey]) {
       if (isIncome) {
         monthBuckets[monthKey].income += amt;
       } else {
