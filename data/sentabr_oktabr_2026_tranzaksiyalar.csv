@@ -1,0 +1,78 @@
+Date,Type,Category,Description,Amount,Currency,Notes
+2026-09-01,income,Oylik maosh,Oylik,6000000,UZS,[SEP-OCT-0001] Sentabr oyi ish haqi (Bank kartasi)
+2026-09-01,expense,Ijara va uy,Uy ijarasi,1800000,UZS,[SEP-OCT-0002] Oylik kvartira ijarasi to'lovi
+2026-09-02,expense,Transport,Taksi,25000,UZS,[SEP-OCT-0003] Yandex Go taksi (Ishga borish)
+2026-09-02,expense,Kafe va restoran,Do‘stlar bilan tushlik,55000,UZS,[SEP-OCT-0004] Rayhon kafesida tushlik
+2026-09-03,expense,Ichimliklar,Kofe,25000,UZS,[SEP-OCT-0005] Americano qahvasi
+2026-09-04,expense,Oziq-ovqat,Supermarket xaridi,280000,UZS,[SEP-OCT-0006] Korzinka supermarket xaridi
+2026-09-05,expense,Transport,Metro yo'l haqi,50000,UZS,[SEP-OCT-0007] ATTO transport kartasini to'ldirish
+2026-09-05,expense,Ichimliklar,Red Bull,25000,UZS,[SEP-OCT-0008] Red Bull energetik ichimligi
+2026-09-06,expense,Kafe va restoran,Do‘stlar bilan kechki ovqat,110000,UZS,[SEP-OCT-0009] Milliy taomlar restorani
+2026-09-07,expense,Obunalar,Yandex Plus obunasi,20000,UZS,[SEP-OCT-0010] Oylik multimedia obunasi
+2026-09-08,expense,Kommunal va aloqa,Kommunal xizmatlar va telefon,100000,UZS,[SEP-OCT-0011] Uzonline optik internet to'lovi
+2026-09-09,expense,Kafe va restoran,Do‘stlar bilan tushlik,45000,UZS,[SEP-OCT-0012] EVOS fast food tushlik
+2026-09-10,expense,Do‘stlarga pul,Do‘stga qarz yoki pul berish,150000,UZS,[SEP-OCT-0013] Payme orqali do'stga o'tkazma
+2026-09-11,expense,Oziq-ovqat,Supermarket xaridi,220000,UZS,[SEP-OCT-0014] Dehqon bozori meva-sabzavot
+2026-09-12,expense,Ko‘ngilochar xarajatlar,PlayStation o‘yini,80000,UZS,[SEP-OCT-0015] PS Club do'stlar bilan o'yin
+2026-09-13,expense,Ichimliklar,Kofe,35000,UZS,[SEP-OCT-0016] Qahva va kruassan
+2026-09-14,expense,Transport,Taksi,30000,UZS,[SEP-OCT-0017] Yandex Go taksi qatnovi
+2026-09-15,expense,Sog‘liq,Sog‘liq va dorixona,70000,UZS,[SEP-OCT-0018] Dorixona (Mavsumiy vitaminlar)
+2026-09-16,expense,Kafe va restoran,Do‘stlar bilan tushlik,50000,UZS,[SEP-OCT-0019] Sho'rva va somsa tushlik
+2026-09-17,expense,Shopping,Shopping va kiyim,220000,UZS,[SEP-OCT-0020] LC Waikiki kuzgi kiyim
+2026-09-18,expense,Oziq-ovqat,Supermarket xaridi,350000,UZS,[SEP-OCT-0021] Makro haftalik bozorlik
+2026-09-19,expense,Transport,Taksi,40000,UZS,[SEP-OCT-0022] Yandex Go taksi (Uchrashuv)
+2026-09-19,expense,Ichimliklar,Red Bull,30000,UZS,[SEP-OCT-0023] Red Bull va muzdek ichimlik
+2026-09-20,expense,Obunalar,YouTube Premium obunasi,20000,UZS,[SEP-OCT-0024] Oylik video platforma obunasi
+2026-09-21,expense,Kafe va restoran,Do‘stlar bilan tushlik,75000,UZS,[SEP-OCT-0025] Qahvaxonada kechki uchrashuv
+2026-09-22,expense,Kommunal va aloqa,Kommunal xizmatlar va telefon,50000,UZS,[SEP-OCT-0026] Ucell mobil aloqa to'lovi
+2026-09-23,expense,Ko‘ngilochar xarajatlar,PlayStation o‘yini,170000,UZS,[SEP-OCT-0027] PlayStation musobaqasi va bouling
+2026-09-24,expense,Transport,Taksi,35000,UZS,[SEP-OCT-0028] Yandex Go taksi
+2026-09-25,expense,Oziq-ovqat,Supermarket xaridi,350000,UZS,[SEP-OCT-0029] Go'sht va sut mahsulotlari
+2026-09-26,expense,Kafe va restoran,Do‘stlar bilan tushlik,65000,UZS,[SEP-OCT-0030] Toshkent osh markazi palov
+2026-09-27,expense,Ichimliklar,Kofe,30000,UZS,[SEP-OCT-0031] Espresso va shirinlik
+2026-09-28,expense,Transport,Taksi,40000,UZS,[SEP-OCT-0032] Yandex Go kechki taksi
+2026-09-29,expense,Kafe va restoran,Do‘stlar bilan tushlik,60000,UZS,[SEP-OCT-0033] KFC tezkor kechki ovqat
+2026-09-29,expense,Ichimliklar,Red Bull,25000,UZS,[SEP-OCT-0034] Red Bull energetik ichimligi
+2026-09-30,expense,Transport,Taksi,130000,UZS,[SEP-OCT-0035] Yandex Go oy yakunidagi taksi safarlari
+2026-09-30,expense,Kafe va restoran,Do‘stlar bilan tushlik,90000,UZS,[SEP-OCT-0036] Jamoa bilan oy oxiri tushligi
+2026-09-30,expense,Ichimliklar,Kofe,30000,UZS,[SEP-OCT-0037] Kofe va mineral suv
+2026-09-30,expense,Boshqa,Boshqa kundalik mayda xarajatlar,20000,UZS,[SEP-OCT-0038] Kantselyariya va ro'zg'or buyumlari
+2026-10-01,income,Oylik maosh,Oylik,6000000,UZS,[SEP-OCT-0039] Oktabr oyi ish haqi (Bank kartasi)
+2026-10-01,expense,Ijara va uy,Uy ijarasi,1800000,UZS,[SEP-OCT-0040] Oylik kvartira ijarasi to'lovi
+2026-10-02,expense,Transport,Taksi,25000,UZS,[SEP-OCT-0041] Yandex Go ertalabki taksi
+2026-10-02,expense,Kafe va restoran,Do‘stlar bilan tushlik,45000,UZS,[SEP-OCT-0042] Ishxonadagi tushlik
+2026-10-03,expense,Ichimliklar,Kofe,25000,UZS,[SEP-OCT-0043] Kunlik cappuccino
+2026-10-04,expense,Oziq-ovqat,Supermarket xaridi,260000,UZS,[SEP-OCT-0044] Korzinka supermarket xaridi
+2026-10-05,expense,Transport,Metro yo'l haqi,45000,UZS,[SEP-OCT-0045] ATTO metro kartasini to'ldirish
+2026-10-05,expense,Ichimliklar,Red Bull,25000,UZS,[SEP-OCT-0046] Red Bull energetik ichimligi
+2026-10-06,expense,Kafe va restoran,Do‘stlar bilan tushlik,110000,UZS,[SEP-OCT-0047] Do'stlar bilan milliy taomlar
+2026-10-07,expense,Obunalar,Yandex Plus obunasi,20000,UZS,[SEP-OCT-0048] Oylik multimedia xizmati obunasi
+2026-10-08,expense,Kommunal va aloqa,Kommunal xizmatlar va telefon,110000,UZS,[SEP-OCT-0049] Elektr energiyasi to'lovi
+2026-10-09,expense,Kafe va restoran,Do‘stlar bilan tushlik,45000,UZS,[SEP-OCT-0050] Lavash va fast food tushlik
+2026-10-10,expense,Do‘stlarga pul,Do‘stga qarz yoki pul berish,160000,UZS,[SEP-OCT-0051] Do'stning tug'ilgan kuniga sovg'a puli
+2026-10-11,expense,Oziq-ovqat,Supermarket xaridi,240000,UZS,[SEP-OCT-0052] Dehqon bozoridan meva-sabzavot
+2026-10-12,expense,Ko‘ngilochar xarajatlar,PlayStation o‘yini,90000,UZS,[SEP-OCT-0053] PlayStation klubi va dam olish
+2026-10-13,expense,Ichimliklar,Kofe,30000,UZS,[SEP-OCT-0054] Qahva va desert
+2026-10-14,expense,Transport,Taksi,35000,UZS,[SEP-OCT-0055] Yandex Go taksi
+2026-10-15,expense,Sog‘liq,Sog‘liq va dorixona,100000,UZS,[SEP-OCT-0056] Dorixona dori vositalari
+2026-10-16,expense,Kafe va restoran,Do‘stlar bilan tushlik,55000,UZS,[SEP-OCT-0057] Choyxona palovi tushlik
+2026-10-17,expense,Shopping,Shopping va kiyim,250000,UZS,[SEP-OCT-0058] Qishki issiq kiyim (Zara/Terra Pro)
+2026-10-18,expense,Oziq-ovqat,Supermarket xaridi,330000,UZS,[SEP-OCT-0059] Makro supermarket xaridi
+2026-10-19,expense,Transport,Taksi,40000,UZS,[SEP-OCT-0060] Yandex Go taksi
+2026-10-19,expense,Ichimliklar,Red Bull,25000,UZS,[SEP-OCT-0061] Red Bull energetik ichimligi
+2026-10-20,expense,Obunalar,Spotify obunasi,20000,UZS,[SEP-OCT-0062] Musiqa platformasi oylik obunasi
+2026-10-21,expense,Kafe va restoran,Do‘stlar bilan tushlik,75000,UZS,[SEP-OCT-0063] Kechki ovqatlanish
+2026-10-22,expense,Kommunal va aloqa,Kommunal xizmatlar va telefon,60000,UZS,[SEP-OCT-0064] Mobil internet va telefon to'lovi
+2026-10-23,expense,Ko‘ngilochar xarajatlar,PlayStation o‘yini,130000,UZS,[SEP-OCT-0065] PlayStation musobaqasi va konsert
+2026-10-24,expense,Transport,Taksi,35000,UZS,[SEP-OCT-0066] Yandex Go taksi
+2026-10-25,expense,Oziq-ovqat,Supermarket xaridi,320000,UZS,[SEP-OCT-0067] Bozorlik (Go'sht va sabzavotlar)
+2026-10-26,expense,Kafe va restoran,Do‘stlar bilan tushlik,50000,UZS,[SEP-OCT-0068] Ish kuni tushligi
+2026-10-27,expense,Ichimliklar,Kofe,25000,UZS,[SEP-OCT-0069] Ertalabki qahva (Cappuccino)
+2026-10-28,expense,Transport,Taksi,35000,UZS,[SEP-OCT-0070] Shahar bo'ylab Yandex Go taksi
+2026-10-29,expense,Kafe va restoran,Do‘stlar bilan tushlik,65000,UZS,[SEP-OCT-0071] Kechki taomlanish
+2026-10-29,expense,Ichimliklar,Red Bull,25000,UZS,[SEP-OCT-0072] Red Bull energetik ichimligi
+2026-10-30,expense,Transport,Taksi,45000,UZS,[SEP-OCT-0073] Ish uchrashuvi taksisi
+2026-10-30,expense,Kafe va restoran,Do‘stlar bilan tushlik,75000,UZS,[SEP-OCT-0074] Hamkorlar bilan tushlik
+2026-10-31,expense,Transport,Taksi,70000,UZS,[SEP-OCT-0075] Oy oxiridagi taksi qatnovlari
+2026-10-31,expense,Ichimliklar,Kofe,25000,UZS,[SEP-OCT-0076] Kofe va mineral suv
+2026-10-31,expense,Boshqa,Boshqa kundalik mayda xarajatlar,30000,UZS,[SEP-OCT-0077] Xo'jalik mollari va kantselyariya

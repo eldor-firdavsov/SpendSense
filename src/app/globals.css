@@ -1,0 +1,253 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #f1f4f2;
+  --surface: #ffffff;
+  --surface-subtle: #f7f9f7;
+  --surface-raised: #ffffff;
+  --surface-green: #e5f4ea;
+  --surface-blue: #eaf0ff;
+  --surface-purple: #f0ebff;
+  --surface-amber: #fff3d9;
+  --surface-red: #fceaea;
+  --text-primary: #17211b;
+  --text-secondary: #68736c;
+  --text-muted: #87918a;
+  --border: #dce4de;
+  --border-strong: #c9d5cd;
+  --brand: #176b45;
+  --brand-deep: #124d35;
+  --brand-soft: #ddf3e5;
+  --income: #218653;
+  --expense: #c74747;
+  --blue: #4b75e8;
+  --purple: #8664d8;
+  --amber: #d99a32;
+  --shadow-card: 0 2px 8px rgba(23, 33, 27, 0.04);
+  --shadow-hover: 0 8px 24px rgba(23, 33, 27, 0.08);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+}
+
+@theme inline {
+  --color-canvas: var(--app-bg);
+  --color-surface: var(--surface);
+  --color-subtle: var(--surface-subtle);
+  --color-raised: var(--surface-raised);
+  --color-surface-green: var(--surface-green);
+  --color-surface-blue: var(--surface-blue);
+  --color-surface-purple: var(--surface-purple);
+  --color-surface-amber: var(--surface-amber);
+  --color-surface-red: var(--surface-red);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-soft: var(--brand-soft);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-blue: var(--blue);
+  --color-purple: var(--purple);
+  --color-amber: var(--amber);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: var(--app-bg);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100%;
+}
+
+/* Tabular numerals for financial amounts */
+.tabular-nums,
+[data-tabular-nums="true"],
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Master Bento Grid Utilities */
+.app-main {
+  width: 100%;
+  max-width: 1760px;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 2.5vw, 44px);
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(14px, 1.25vw, 22px);
+  align-items: stretch;
+}
+
+.bento-tile {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  padding: clamp(16px, 1.4vw, 24px);
+}
+
+.bento-tile-green {
+  background-color: var(--surface-green);
+  border-color: rgba(33, 134, 83, 0.2);
+}
+
+.bento-tile-blue {
+  background-color: var(--surface-blue);
+  border-color: rgba(75, 117, 232, 0.2);
+}
+
+.bento-tile-purple {
+  background-color: var(--surface-purple);
+  border-color: rgba(134, 100, 216, 0.2);
+}
+
+.bento-tile-amber {
+  background-color: var(--surface-amber);
+  border-color: rgba(217, 154, 50, 0.2);
+}
+
+.bento-tile-interactive {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bento-tile-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--border-strong);
+}
+
+/* Legacy layout support */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(16px, 1.5vw, 24px);
+}
+
+.balance-card {
+  grid-column: span 12;
+}
+
+@media (min-width: 1024px) {
+  .balance-card {
+    grid-column: span 7;
+  }
+}
+
+.summary-grid {
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .summary-grid {
+    grid-column: span 5;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.analytics-main {
+  grid-column: span 12;
+}
+
+@media (min-width: 1024px) {
+  .analytics-main {
+    grid-column: span 8;
+  }
+}
+
+.analytics-side {
+  grid-column: span 12;
+}
+
+@media (min-width: 1024px) {
+  .analytics-side {
+    grid-column: span 4;
+  }
+}
+
+.responsive-card {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Elevation shadows */
+.shadow-fintech-card {
+  box-shadow: var(--shadow-card);
+}
+
+.shadow-fintech-elevated {
+  box-shadow: 0 4px 20px -2px rgba(23, 107, 69, 0.06), var(--shadow-card);
+}
+
+.shadow-fintech-modal {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Override legacy dark markers to keep pristine light theme */
+.bg-zinc-950,
+.bg-zinc-950\/80,
+.bg-zinc-950\/90,
+.bg-zinc-950\/60,
+.bg-zinc-900,
+.bg-zinc-900\/30,
+.bg-zinc-900\/40,
+.bg-zinc-900\/50,
+.bg-zinc-900\/60,
+.bg-zinc-900\/80 {
+  background-color: #ffffff !important;
+}
+
+.bg-zinc-800,
+.bg-zinc-800\/40,
+.bg-zinc-800\/50,
+.bg-zinc-800\/60,
+.bg-zinc-800\/80 {
+  background-color: #f7f9f7 !important;
+}
+
+.border-zinc-800,
+.border-zinc-800\/60,
+.border-zinc-800\/80,
+.border-zinc-700 {
+  border-color: #dce4de !important;
+}
+
+.text-zinc-100,
+.text-zinc-200 {
+  color: #17211b !important;
+}
+
+.text-zinc-300 {
+  color: #68736c !important;
+}

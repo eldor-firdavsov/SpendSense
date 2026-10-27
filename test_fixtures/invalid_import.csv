@@ -1,0 +1,5 @@
+Date,Description,Amount,Type,Merchant
+invalid-date,Bad Date Item,15.00,expense,Shady
+2026-10-18,Zero Amount Item,0.00,expense,Freebie
+2026-10-19,=cmd|/c calc!A0,45.00,expense,Injection
+2026-10-20,Valid Artisan Coffee,6.50,expense,Blue Bottle
