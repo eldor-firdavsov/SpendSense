@@ -8,7 +8,6 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  RefreshCw,
   Calendar,
   Sparkles,
   ArrowUpRight,
@@ -16,15 +15,22 @@ import {
 import GoalModal from './GoalModal';
 import ContributeModal from './ContributeModal';
 import DeleteGoalModal from './DeleteGoalModal';
+import GoalAIFeedbackModal from './GoalAIFeedbackModal';
 import type { GoalWithProgress } from '@/lib/goals/schemas';
 import { PageHeader, BentoGrid, BentoCard, BentoMetricCard, BentoEmptyState } from '@/components/bento';
-import { cachedFetch, invalidateCache, CACHE_TTL } from '@/lib/cache/clientCache';
+import { cachedFetch, peekCache, invalidateCache, CACHE_TTL } from '@/lib/cache/clientCache';
+import { MetricCardSkeleton, GoalCardSkeleton } from '@/components/ui/Skeleton';
 
 export default function GoalsManager() {
-  const [goals, setGoals] = useState<GoalWithProgress[]>([]);
-  const [currency, setCurrency] = useState('UZS');
+  const currency = 'UZS';
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed'>('all');
-  const [loading, setLoading] = useState(true);
+
+  const defaultGoalsUrl = `/api/goals?currency=UZS`;
+  const initialCached = peekCache<{ goals: GoalWithProgress[] }>(defaultGoalsUrl);
+
+  const [goals, setGoals] = useState<GoalWithProgress[]>(() => initialCached?.goals || []);
+  const [loading, setLoading] = useState(() => !initialCached);
+  const [isRevalidating, setIsRevalidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadTrigger, setReloadTrigger] = useState(0);
 
@@ -38,6 +44,8 @@ export default function GoalsManager() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [goalToDelete, setGoalToDelete] = useState<GoalWithProgress | null>(null);
 
+  const [aiFeedbackGoal, setAiFeedbackGoal] = useState<GoalWithProgress | null>(null);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -47,11 +55,22 @@ export default function GoalsManager() {
         if (statusFilter !== 'all') {
           params.set('status', statusFilter);
         }
+        const targetUrl = `/api/goals?${params.toString()}`;
+        const cached = peekCache<{ goals: GoalWithProgress[] }>(targetUrl);
+
         if (reloadTrigger > 0) {
           invalidateCache('/api/goals');
+        } else if (cached?.goals) {
+          setGoals(cached.goals);
+          setError(null);
+          setLoading(false);
+          setIsRevalidating(true);
+        } else if (goals.length === 0) {
+          setLoading(true);
         }
+
         const data = await cachedFetch<{ goals: GoalWithProgress[] }>(
-          `/api/goals?${params.toString()}`,
+          targetUrl,
           undefined,
           CACHE_TTL.GOALS
         );
@@ -59,11 +78,13 @@ export default function GoalsManager() {
           setGoals(data.goals || []);
           setError(null);
           setLoading(false);
+          setIsRevalidating(false);
         }
       } catch (err: unknown) {
         if (!isCancelled) {
           setError(err instanceof Error ? err.message : 'Maqsadlarni yuklashda xatolik');
           setLoading(false);
+          setIsRevalidating(false);
         }
       }
     }
@@ -73,7 +94,7 @@ export default function GoalsManager() {
     return () => {
       isCancelled = true;
     };
-  }, [currency, statusFilter, reloadTrigger]);
+  }, [statusFilter, reloadTrigger]);
 
   const refreshGoals = () => {
     invalidateCache('/api/goals');
@@ -104,37 +125,28 @@ export default function GoalsManager() {
             <span>Jamg‘arma maqsadlari</span>
           </div>
         }
-        subtitle="Moliyaviy maqsadlarni belgilang, jamg‘arish jarayonini kuzating va real pul oqimingiz asosida imkoniyatlarni baholang."
-        srOnlyFallback="Savings Goals"
+        onRefresh={refreshGoals}
+        isRefreshing={loading || isRevalidating}
+        refreshId="refresh-goals-btn"
         actions={
           <>
             {/* Status Filter */}
-            <div className="inline-flex rounded-xl bg-[#F7F9F7] p-0.5 border border-[#DCE4DE] text-xs">
+            <div className="inline-flex rounded-xl bg-[#F7F9F7] p-1 border border-[#D5DED7] text-sm">
               {(['all', 'in_progress', 'completed'] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setStatusFilter(s)}
-                  className={`px-2.5 py-1 rounded-lg transition-all text-xs ${
+                  className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
                     statusFilter === s
-                      ? 'bg-white text-[#176B45] font-semibold shadow-fintech-card'
-                      : 'text-[#68736C] hover:text-[#17211B]'
+                      ? 'bg-[#176B45] text-white font-semibold shadow-xs'
+                      : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
                   }`}
                 >
                   {s === 'all' ? 'Barchasi' : s === 'in_progress' ? 'Faol' : 'Yakunlangan'}
                 </button>
               ))}
             </div>
-
-            {/* Currency */}
-            <select
-              id="goals-currency-filter"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="bg-white border border-[#DCE4DE] text-[#17211B] rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#176B45] transition-all shadow-fintech-card"
-            >
-              <option value="UZS">UZS (soʻm)</option>
-            </select>
 
             <button
               id="create-goal-btn"
@@ -143,7 +155,7 @@ export default function GoalsManager() {
                 setGoalToEdit(null);
                 setIsModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#176B45] text-white font-semibold text-xs hover:bg-[#125536] transition-colors shadow-fintech-card"
+              className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-xl bg-[#176B45] text-white font-semibold text-sm hover:bg-[#125536] transition-colors shadow-fintech-card"
             >
               <Plus className="h-4 w-4" />
               <span>Maqsad yaratish</span>
@@ -179,22 +191,39 @@ export default function GoalsManager() {
         </BentoGrid>
       )}
 
-      {/* Error Banner */}
+      {/* Error Banner with Retry */}
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-[#C74747] text-xs flex items-start gap-2.5">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold">Maqsadlarni yuklab bo‘lmadi</p>
-            <p className="text-rose-600 mt-0.5">{error}</p>
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-[#C74747] text-sm flex items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Maqsadlarni yuklab bo‘lmadi</p>
+              <p className="text-rose-600 mt-0.5">{error}</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={refreshGoals}
+            className="px-3.5 py-1.5 rounded-xl bg-white border border-rose-300 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors shrink-0 shadow-2xs"
+          >
+            Qayta urinish
+          </button>
         </div>
       )}
 
-      {/* Loading state */}
-      {loading && (
-        <div className="py-12 text-center text-[#68736C] flex flex-col items-center justify-center gap-2">
-          <RefreshCw className="h-5 w-5 animate-spin text-[#176B45]" />
-          <p className="text-xs">Jamg‘arma maqsadlari baholanmoqda...</p>
+      {/* Loading state matching UI */}
+      {loading && goals.length === 0 && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <GoalCardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -212,7 +241,7 @@ export default function GoalsManager() {
                 setGoalToEdit(null);
                 setIsModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#176B45] text-white font-semibold text-xs hover:bg-[#125536] transition-colors shadow-fintech-card"
+              className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-xl bg-[#176B45] text-white font-semibold text-sm hover:bg-[#125536] transition-colors shadow-fintech-card"
             >
               <Plus className="h-4 w-4" />
               <span>Birinchi maqsadni yaratish</span>
@@ -226,36 +255,38 @@ export default function GoalsManager() {
         <BentoGrid cols={3}>
           {goals.map((g) => {
             const isDone = g.status === 'completed' || g.percentage_completed >= 100;
-            const feasStatus = g.feasibility.status;
 
             return (
               <BentoCard
                 key={g.id}
                 isInteractive
-                className="space-y-4 flex flex-col justify-between"
+                className="p-5 sm:p-6 space-y-5 flex flex-col justify-between"
               >
-                {/* Header */}
-                <div className="space-y-3.5">
+                {/* Header & Progress Info */}
+                <div className="space-y-4">
+                  {/* Goal Name, Deadline & Status */}
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-sm text-[#17211B]">{g.name}</h3>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-lg sm:text-xl text-[#17211B] tracking-tight leading-snug line-clamp-2">
+                        {g.name}
+                      </h3>
                       {g.target_date && (
-                        <p className="text-[11px] text-[#68736C] mt-0.5 flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-[#68736C]" />
+                        <p className="text-xs sm:text-sm text-[#5A675F] mt-1.5 flex items-center gap-1.5 font-mono">
+                          <Calendar className="h-4 w-4 text-[#176B45]" />
                           <span>Muddat: {g.target_date}</span>
                         </p>
                       )}
                     </div>
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shrink-0 border ${
                         isDone
                           ? 'bg-[#DDF3E5] text-[#176B45] border-[#176B45]/20'
-                          : 'bg-[#F7F9F7] text-[#68736C] border-[#DCE4DE]'
+                          : 'bg-[#F0F5F2] text-[#47544C] border-[#D5DED7]'
                       }`}
                     >
                       {isDone ? (
                         <>
-                          <CheckCircle2 className="h-3 w-3" />
+                          <CheckCircle2 className="h-3.5 w-3.5" />
                           <span>Bajarildi</span>
                         </>
                       ) : (
@@ -264,115 +295,104 @@ export default function GoalsManager() {
                     </span>
                   </div>
 
-                  {/* Progress info */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-baseline justify-between text-xs">
-                      <span className="text-[#68736C]">
-                        To‘plandi:{' '}
-                        <strong className="text-[#176B45] font-mono font-semibold">
-                          {formatCurrency(g.current_amount, g.currency)}
-                        </strong>
-                      </span>
-                      <span className="text-[#68736C]">
-                        Maqsad:{' '}
-                        <strong className="text-[#17211B] font-mono font-semibold">
-                          {formatCurrency(g.target_amount, g.currency)}
-                        </strong>
-                      </span>
-                    </div>
-
-                    <div className="h-1.5 w-full bg-[#F7F9F7] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#176B45] rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, g.percentage_completed)}%` }}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#68736C] font-mono">
-                        {g.percentage_completed.toFixed(1)}% bajarildi
-                      </span>
-                      <span className="text-[#68736C] font-mono">
-                        {isDone
-                          ? 'Maqsadga erishildi!'
-                          : `${formatCurrency(g.remaining_amount, g.currency)} qoldi`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Feasibility Insight Card */}
-                  <div
-                    className={`p-2.5 rounded-xl border text-xs space-y-0.5 ${
-                      feasStatus === 'feasible'
-                        ? 'bg-[#DDF3E5] border-[#176B45]/20 text-[#176B45]'
-                        : feasStatus === 'challenging'
-                        ? 'bg-amber-50 border-amber-200 text-amber-800'
-                        : feasStatus === 'unlikely'
-                        ? 'bg-rose-50 border-rose-200 text-[#C74747]'
-                        : 'bg-[#F7F9F7] border-[#DCE4DE] text-[#68736C]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 font-medium text-[11px]">
-                      <Sparkles className="h-3 w-3 shrink-0" />
-                      <span>
-                        {isDone
-                          ? 'Maqsad to‘liq bajarildi'
-                          : feasStatus === 'feasible'
-                          ? 'Amalga oshirish mumkin'
-                          : feasStatus === 'challenging'
-                          ? 'Qiyinroq (chegarada)'
-                          : feasStatus === 'unlikely'
-                          ? 'Imkoniyat yetarli emas'
-                          : 'Baholash natijasi'}
-                      </span>
-                      {g.feasibility.monthly_needed !== null && !isDone && (
-                        <span className="ml-auto font-mono text-[10px] font-semibold">
-                          Kerak: {formatCurrency(g.feasibility.monthly_needed, g.currency)}/oy
+                  {/* Progress info: Maqsad va hozirgi pul progressi */}
+                  <div className="space-y-3 pt-1">
+                    <div className="flex items-end justify-between gap-2">
+                      <div>
+                        <span className="block text-xs font-semibold text-[#5A675F] uppercase tracking-wider mb-1">
+                          To‘plandi
                         </span>
-                      )}
+                        <div className="text-2xl sm:text-3xl font-bold font-mono text-[#176B45] tabular-nums leading-none">
+                          {formatCurrency(g.current_amount, g.currency)}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-xs font-semibold text-[#5A675F] uppercase tracking-wider mb-1">
+                          Maqsad
+                        </span>
+                        <div className="text-base sm:text-lg font-bold font-mono text-[#17211B] tabular-nums leading-none">
+                          {formatCurrency(g.target_amount, g.currency)}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[10px] leading-relaxed opacity-90 mt-1">
-                      {g.feasibility.explanation}
-                    </p>
+
+                    {/* Thicker, modern progress bar */}
+                    <div className="space-y-1.5">
+                      <div className="h-3 w-full bg-[#E8EFEA] rounded-full overflow-hidden p-0.5 border border-[#D5DED7]/60">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#176B45] to-[#1F8A5B] rounded-full transition-all duration-500 shadow-xs"
+                          style={{ width: `${Math.min(100, Math.max(0, g.percentage_completed))}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs sm:text-sm font-mono pt-0.5">
+                        <span className="font-bold text-[#176B45] tabular-nums">
+                          {g.percentage_completed.toFixed(1)}% bajarildi
+                        </span>
+                        <span className="text-[#5A675F] font-medium tabular-nums">
+                          {isDone
+                            ? 'Maqsadga erishildi! 🎉'
+                            : `${formatCurrency(g.remaining_amount, g.currency)} qoldi`}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Card Actions Footer */}
-                <div className="pt-3 border-t border-[#DCE4DE] flex items-center justify-between gap-2">
+                <div className="pt-4 border-t border-[#D5DED7] flex items-center justify-between gap-2.5">
+                  {/* Primary CTA: Mablag‘ qo‘shish / yechish */}
                   <button
                     type="button"
                     onClick={() => {
                       setContributeGoal(g);
                       setIsContributeModalOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#F7F9F7] hover:bg-[#DDF3E5] border border-[#DCE4DE] text-xs font-semibold text-[#176B45] transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[42px] rounded-xl bg-[#176B45] hover:bg-[#125536] text-white font-semibold text-xs sm:text-sm shadow-sm transition-all active:scale-[0.98] group flex-1 sm:flex-initial"
                   >
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                    <span>Mablag‘ qo‘shish / yechish</span>
+                    <ArrowUpRight className="h-4 w-4 text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
+                    <span className="truncate">Mablag‘ qo‘shish / yechish</span>
                   </button>
 
-                  <div className="flex items-center gap-1">
+                  {/* Secondary Actions: AI Feedback + Edit + Delete */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* AI Feedback Button next to Edit */}
+                    <button
+                      type="button"
+                      onClick={() => setAiFeedbackGoal(g)}
+                      className="min-h-[40px] min-w-[40px] flex items-center justify-center p-2 rounded-xl bg-[#DDF3E5] hover:bg-[#C7ECD3] text-[#176B45] border border-[#176B45]/20 hover:border-[#176B45]/40 transition-all shadow-xs active:scale-95"
+                      title="AI tahlili va tavsiya olish"
+                      aria-label="AI tavsiya olish"
+                    >
+                      <Sparkles className="h-4 w-4 text-[#176B45]" />
+                    </button>
+
+                    {/* Edit Button */}
                     <button
                       type="button"
                       onClick={() => {
                         setGoalToEdit(g);
                         setIsModalOpen(true);
                       }}
-                      className="p-1 rounded-lg text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
+                      className="min-h-[40px] min-w-[40px] flex items-center justify-center p-2 rounded-xl text-[#47544C] hover:text-[#17211B] hover:bg-[#F0F5F2] border border-transparent hover:border-[#D5DED7] transition-all active:scale-95"
                       title="Tahrirlash"
+                      aria-label="Tahrirlash"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
+                      <Edit2 className="h-4 w-4" />
                     </button>
+
+                    {/* Delete Button */}
                     <button
                       type="button"
                       onClick={() => {
                         setGoalToDelete(g);
                         setIsDeleteModalOpen(true);
                       }}
-                      className="p-1 rounded-lg text-[#68736C] hover:text-[#C74747] hover:bg-rose-50 transition-colors"
+                      className="min-h-[40px] min-w-[40px] flex items-center justify-center p-2 rounded-xl text-[#47544C] hover:text-[#C74747] hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all active:scale-95"
                       title="O‘chirish"
+                      aria-label="O‘chirish"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -416,6 +436,13 @@ export default function GoalsManager() {
           onSuccess={refreshGoals}
         />
       )}
+
+      {/* Goal AI Feasibility Feedback Modal */}
+      <GoalAIFeedbackModal
+        isOpen={!!aiFeedbackGoal}
+        goal={aiFeedbackGoal}
+        onClose={() => setAiFeedbackGoal(null)}
+      />
     </div>
   );
 }

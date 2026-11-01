@@ -2,32 +2,42 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Plus,
   Search,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   Edit2,
   Trash2,
-  Loader2,
   RefreshCw,
-  TrendingDown,
-  TrendingUp,
   Calendar,
-  Info,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Plus,
   X,
 } from 'lucide-react';
 import type { TransactionWithCategory, Category, TransactionType } from '@/types/database';
 import TransactionModal from './TransactionModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import { PageHeader } from '@/components/bento';
-import { cachedFetch, invalidateCache, invalidateAllFinancialCaches, CACHE_TTL } from '@/lib/cache/clientCache';
+import { cachedFetch, peekCache, invalidateCache, invalidateAllFinancialCaches, CACHE_TTL } from '@/lib/cache/clientCache';
+import { getCategoryDisplayName } from '@/lib/categories/schemas';
+import { TransactionRowSkeleton } from '@/components/ui/Skeleton';
+
+const DEFAULT_TX_URL = '/api/transactions?page=1&pageSize=12&sortBy=date&sortDirection=desc';
 
 export default function TransactionsManager() {
-  const [transactions, setTransactions] = useState<TransactionWithCategory[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const initialCachedTx = peekCache<{
+    transactions: TransactionWithCategory[];
+    totalCount: number;
+    totalPages: number;
+  }>(DEFAULT_TX_URL);
+
+  const initialCachedCats = peekCache<{ categories: Category[] }>('/api/categories');
+
+  const [transactions, setTransactions] = useState<TransactionWithCategory[]>(() => initialCachedTx?.transactions || []);
+  const [categories, setCategories] = useState<Category[]>(() => initialCachedCats?.categories || []);
+  const [totalCount, setTotalCount] = useState(() => initialCachedTx?.totalCount || 0);
+  const [totalPages, setTotalPages] = useState(() => initialCachedTx?.totalPages || 1);
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
@@ -48,8 +58,9 @@ export default function TransactionsManager() {
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // UI state
-  const [isLoading, setIsLoading] = useState(true);
+  // UI state: if we have cached data, isLoading starts as false for 0ms navigation!
+  const [isLoading, setIsLoading] = useState(() => !initialCachedTx);
+  const [isRevalidating, setIsRevalidating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [reloadTrigger, setReloadTrigger] = useState(0);
@@ -61,7 +72,7 @@ export default function TransactionsManager() {
   const [transactionToDelete, setTransactionToDelete] = useState<TransactionWithCategory | null>(null);
   const [selectedTxDetail, setSelectedTxDetail] = useState<TransactionWithCategory | null>(null);
 
-  // Fetch categories once
+  // Fetch categories once with cache
   useEffect(() => {
     let active = true;
     async function loadCategories() {
@@ -71,8 +82,8 @@ export default function TransactionsManager() {
           undefined,
           CACHE_TTL.CATEGORIES
         );
-        if (active) {
-          setCategories(data.categories || []);
+        if (active && data.categories) {
+          setCategories(data.categories);
         }
       } catch (err) {
         console.error('Kategoriyalarni yuklashda xatolik:', err);
@@ -101,27 +112,46 @@ export default function TransactionsManager() {
         params.set('sortBy', sortBy);
         params.set('sortDirection', sortDirection);
 
+        const targetUrl = `/api/transactions?${params.toString()}`;
+        const cached = peekCache<{
+          transactions: TransactionWithCategory[];
+          totalCount: number;
+          totalPages: number;
+        }>(targetUrl);
+
         if (reloadTrigger > 0) {
           invalidateCache('/api/transactions');
+        } else if (cached) {
+          // If cached data exists for these exact filters, display immediately
+          setTransactions(cached.transactions || []);
+          setTotalCount(cached.totalCount || 0);
+          setTotalPages(cached.totalPages || 1);
+          setIsLoading(false);
+          setIsRevalidating(true);
+        } else {
+          // Only show skeleton if no data is available
+          setIsLoading(true);
         }
 
         const data = await cachedFetch<{
           transactions: TransactionWithCategory[];
           totalCount: number;
           totalPages: number;
-        }>(`/api/transactions?${params.toString()}`, undefined, CACHE_TTL.TRANSACTIONS);
+        }>(targetUrl, undefined, CACHE_TTL.TRANSACTIONS);
 
         if (!isCancelled) {
           setTransactions(data.transactions || []);
           setTotalCount(data.totalCount || 0);
           setTotalPages(data.totalPages || 1);
           setIsLoading(false);
+          setIsRevalidating(false);
         }
       } catch (err: unknown) {
         if (!isCancelled) {
           const message = err instanceof Error ? err.message : 'Tranzaksiyalarni yuklashda xatolik';
           setNotification({ type: 'error', message });
           setIsLoading(false);
+          setIsRevalidating(false);
         }
       }
     }
@@ -231,17 +261,6 @@ export default function TransactionsManager() {
     setReloadTrigger((t) => t + 1);
   };
 
-  // Computed summary over currently displayed transactions
-  const { totalIncome, totalExpenses, netFlow } = useMemo(() => {
-    let inc = 0;
-    let exp = 0;
-    for (const tx of transactions) {
-      const val = Number(tx.amount) || 0;
-      if (tx.type === 'income') inc += val;
-      if (tx.type === 'expense') exp += val;
-    }
-    return { totalIncome: inc, totalExpenses: exp, netFlow: inc - exp };
-  }, [transactions]);
 
   // Group transactions by date
   const groupedTransactions = useMemo(() => {
@@ -284,45 +303,37 @@ export default function TransactionsManager() {
           <div className="flex items-center gap-2.5">
             <ArrowUpDown className="h-5 w-5 text-[#176B45]" />
             <span>Faoliyat</span>
+            <span className="sr-only">Transactions</span>
           </div>
         }
         subtitle="Daromad va xarajatlaringizni kuzating."
-        srOnlyFallback="Activity"
+        onRefresh={() => {
+          setIsLoading(true);
+          setReloadTrigger((t) => t + 1);
+        }}
+        isRefreshing={isLoading || isRevalidating}
+        refreshId="refresh-transactions-btn"
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              id="refresh-transactions-btn"
-              type="button"
-              onClick={() => {
-                setIsLoading(true);
-                setReloadTrigger((t) => t + 1);
-              }}
-              className="p-2 rounded-xl bg-white border border-[#DCE4DE] text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-all shadow-fintech-card"
-              title="Yangilash"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin text-[#176B45]' : ''}`} />
-            </button>
-            <button
-              id="create-transaction-btn"
-              type="button"
-              onClick={() => {
-                setTransactionToEdit(null);
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#176B45] text-white font-semibold text-xs hover:bg-[#125536] transition-colors shadow-fintech-card"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tranzaksiya</span>
-              <span className="sr-only">+ Tranzaksiya Add Transaction</span>
-            </button>
-          </div>
+          <button
+            id="add-transaction-btn"
+            type="button"
+            onClick={() => {
+              setTransactionToEdit(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-xl bg-[#176B45] text-white font-semibold text-sm hover:bg-[#125536] transition-colors shadow-fintech-card cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Tranzaksiya qo‘shish</span>
+            <span className="sr-only">Add Transaction</span>
+          </button>
         }
       />
 
       {/* Toast Notification Banner */}
       {notification && (
         <div
-          className={`p-3 rounded-xl text-xs flex items-center justify-between border ${
+          className={`p-3.5 rounded-xl text-sm font-medium flex items-center justify-between border ${
             notification.type === 'success'
               ? 'bg-[#DDF3E5] border-[#176B45]/20 text-[#176B45]'
               : 'bg-rose-50 border-rose-200 text-[#C74747]'
@@ -333,18 +344,19 @@ export default function TransactionsManager() {
             type="button"
             onClick={() => setNotification(null)}
             className="p-1 hover:opacity-75 transition-opacity"
+            aria-label="Yopish"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
       {/* Filters and Search Bar */}
-      <div className="rounded-2xl border border-[#DCE4DE] bg-white p-4 space-y-3 shadow-fintech-card">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+      <div className="rounded-2xl border border-[#D5DED7] bg-white p-4 sm:p-5 space-y-4 shadow-fintech-card">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
           {/* Search Input */}
           <div className="md:col-span-4 relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#68736C]">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5A675F]">
               <Search className="h-4 w-4" />
             </span>
             <input
@@ -357,13 +369,13 @@ export default function TransactionsManager() {
                 setPage(1);
                 setIsLoading(true);
               }}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white pl-9 pr-3 py-2 text-xs text-[#17211B] placeholder-[#68736C] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+              className="w-full min-h-[44px] rounded-xl border border-[#D5DED7] bg-white pl-10 pr-3.5 py-2 text-sm text-[#17211B] placeholder-[#5A675F] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             />
           </div>
 
           {/* Type Filter Buttons */}
           <div className="md:col-span-3">
-            <div className="flex rounded-xl border border-[#DCE4DE] p-0.5 bg-[#F7F9F7] text-xs">
+            <div className="flex rounded-xl border border-[#D5DED7] p-1 bg-[#F7F9F7] text-sm">
               <button
                 type="button"
                 onClick={() => {
@@ -371,10 +383,10 @@ export default function TransactionsManager() {
                   setPage(1);
                   setIsLoading(true);
                 }}
-                className={`flex-1 py-1.5 rounded-lg font-medium text-center transition-all ${
+                className={`flex-1 py-1.5 sm:py-2 rounded-lg text-center transition-all ${
                   typeFilter === 'all'
-                    ? 'bg-white text-[#17211B] shadow-fintech-card font-semibold'
-                    : 'text-[#68736C] hover:text-[#17211B]'
+                    ? 'bg-[#176B45] text-white shadow-xs font-semibold'
+                    : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
                 }`}
               >
                 Barchasi
@@ -386,10 +398,10 @@ export default function TransactionsManager() {
                   setPage(1);
                   setIsLoading(true);
                 }}
-                className={`flex-1 py-1.5 rounded-lg font-medium text-center transition-all ${
+                className={`flex-1 py-1.5 sm:py-2 rounded-lg text-center transition-all ${
                   typeFilter === 'income'
-                    ? 'bg-white text-[#176B45] shadow-fintech-card font-semibold'
-                    : 'text-[#68736C] hover:text-[#17211B]'
+                    ? 'bg-[#176B45] text-white shadow-xs font-semibold'
+                    : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
                 }`}
               >
                 Daromad
@@ -401,31 +413,15 @@ export default function TransactionsManager() {
                   setPage(1);
                   setIsLoading(true);
                 }}
-                className={`flex-1 py-1.5 rounded-lg font-medium text-center transition-all ${
+                className={`flex-1 py-1.5 sm:py-2 rounded-lg text-center transition-all ${
                   typeFilter === 'expense'
-                    ? 'bg-white text-amber-900 shadow-fintech-card font-semibold'
-                    : 'text-[#68736C] hover:text-[#17211B]'
+                    ? 'bg-[#C74747] text-white shadow-xs font-semibold'
+                    : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
                 }`}
               >
                 Xarajat
               </button>
             </div>
-            {/* Hidden select for backwards compatibility */}
-            <select
-              id="filter-type-select"
-              aria-label="Tranzaksiya turi"
-              value={typeFilter}
-              onChange={(e) => {
-                setTypeFilter(e.target.value as 'all' | 'income' | 'expense');
-                setPage(1);
-                setIsLoading(true);
-              }}
-              className="sr-only"
-            >
-              <option value="all">Barcha turlar</option>
-              <option value="expense">Faqat xarajatlar</option>
-              <option value="income">Faqat daromadlar</option>
-            </select>
           </div>
 
           {/* Category Filter */}
@@ -439,13 +435,13 @@ export default function TransactionsManager() {
                 setPage(1);
                 setIsLoading(true);
               }}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white px-3 py-2 text-xs text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+              className="w-full min-h-[44px] rounded-xl border border-[#D5DED7] bg-white px-3 py-2 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             >
               <option value="all">Barcha kategoriyalar</option>
               <option value="uncategorized">(Kategoriyasiz)</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} ({c.type === 'income' ? 'Kirim' : 'Chiqim'})
+                  {getCategoryDisplayName(c.name)} ({c.type === 'income' ? 'Kirim' : 'Chiqim'})
                 </option>
               ))}
             </select>
@@ -464,7 +460,7 @@ export default function TransactionsManager() {
                 setPage(1);
                 setIsLoading(true);
               }}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white px-3 py-2 text-xs text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+              className="w-full min-h-[44px] rounded-xl border border-[#D5DED7] bg-white px-3 py-2 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             >
               <option value="date-desc">Eng yangi</option>
               <option value="date-asc">Eng eski</option>
@@ -477,7 +473,7 @@ export default function TransactionsManager() {
               id="reset-filters-btn"
               onClick={handleResetFilters}
               title="Filtrlarni tozalash"
-              className="rounded-xl border border-[#DCE4DE] bg-white p-2 text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-[#D5DED7] bg-white p-2.5 text-[#47544C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
             </button>
@@ -485,11 +481,11 @@ export default function TransactionsManager() {
         </div>
 
         {/* Date Range Row */}
-        <div className="flex flex-wrap items-center gap-3 pt-2.5 border-t border-[#DCE4DE] text-xs text-[#68736C]">
-          <span className="flex items-center gap-1 font-medium text-[#17211B]">
-            <Calendar className="h-3.5 w-3.5 text-[#176B45]" /> Sana oralig‘i:
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-3 border-t border-[#D5DED7] text-sm text-[#47544C]">
+          <span className="flex items-center gap-1.5 font-medium text-[#17211B] text-xs sm:text-sm shrink-0">
+            <Calendar className="h-4 w-4 text-[#176B45]" /> Sana oralig‘i:
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-1 sm:flex-initial items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
             <input
               id="filter-start-date"
               aria-label="Boshlanish sanasi"
@@ -500,9 +496,9 @@ export default function TransactionsManager() {
                 setPage(1);
                 setIsLoading(true);
               }}
-              className="rounded-xl border border-[#DCE4DE] bg-white px-2.5 py-1 text-xs text-[#17211B] focus:border-[#176B45] focus:outline-none transition-all"
+              className="flex-1 sm:flex-initial min-h-[38px] w-full sm:w-36 rounded-xl border border-[#D5DED7] bg-white px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             />
-            <span>—</span>
+            <span className="text-[#5A675F] shrink-0 text-xs">—</span>
             <input
               id="filter-end-date"
               aria-label="Tugash sanasi"
@@ -513,11 +509,11 @@ export default function TransactionsManager() {
                 setPage(1);
                 setIsLoading(true);
               }}
-              className="rounded-xl border border-[#DCE4DE] bg-white px-2.5 py-1 text-xs text-[#17211B] focus:border-[#176B45] focus:outline-none transition-all"
+              className="flex-1 sm:flex-initial min-h-[38px] w-full sm:w-36 rounded-xl border border-[#D5DED7] bg-white px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             />
           </div>
           {(startDate || endDate || search || typeFilter !== 'all' || categoryFilter !== 'all') && (
-            <span className="text-[#176B45] text-xs font-medium ml-auto">
+            <span className="text-[#176B45] text-xs sm:text-sm font-medium w-full sm:w-auto sm:ml-auto">
               Topildi: {totalCount} ta mos yozuv
             </span>
           )}
@@ -525,252 +521,148 @@ export default function TransactionsManager() {
       </div>
 
       {/* Main Content Area: Grouped List (Desktop & Mobile) */}
-      <div className="rounded-2xl border border-[#DCE4DE] bg-white overflow-hidden shadow-fintech-card">
-        {isLoading ? (
-          <div id="transactions-loading" className="py-16 flex flex-col items-center justify-center text-[#68736C]">
-            <Loader2 className="h-6 w-6 animate-spin text-[#176B45] mb-2" />
-            <span className="text-xs">Tranzaksiyalar yuklanmoqda...</span>
+      <div className="rounded-2xl border border-[#D5DED7] bg-white overflow-hidden shadow-fintech-card">
+        {isLoading && transactions.length === 0 ? (
+          <div id="transactions-loading" className="divide-y divide-[#D5DED7]">
+            <div className="bg-[#F7F9F7] px-5 py-3 border-b border-[#D5DED7]">
+              <div className="h-4 w-36 skeleton-shimmer rounded" />
+            </div>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <TransactionRowSkeleton key={i} />
+            ))}
           </div>
         ) : transactions.length === 0 ? (
-          <div id="transactions-empty-state" className="py-16 text-center px-4">
-            <div className="h-10 w-10 rounded-full bg-[#F7F9F7] flex items-center justify-center mx-auto text-[#68736C] mb-2.5 border border-[#DCE4DE]">
-              <ArrowUpDown className="h-5 w-5" />
+          <div id="transactions-empty-state" className="py-20 text-center px-4">
+            <div className="h-12 w-12 rounded-full bg-[#F7F9F7] flex items-center justify-center mx-auto text-[#5A675F] mb-3 border border-[#D5DED7]">
+              <ArrowUpDown className="h-6 w-6" />
             </div>
-            <h3 className="text-sm font-semibold text-[#17211B]">Tranzaksiyalar hali yo‘q.</h3>
-            <p className="text-xs text-[#68736C] mt-1 max-w-sm mx-auto">
+            <h3 className="text-base sm:text-lg font-semibold text-[#17211B]">Tranzaksiyalar hali yo‘q.</h3>
+            <p className="text-sm sm:text-base text-[#47544C] mt-1.5 max-w-sm mx-auto">
               {search || typeFilter !== 'all' || categoryFilter !== 'all' || startDate || endDate
                 ? 'Tanlangan filtrlarga mos keluvchi tranzaksiyalar topilmadi.'
                 : 'Birinchi daromad yoki xarajatingizni qo‘shing.'}
             </p>
           </div>
         ) : (
-          <div>
-            {/* Desktop Table */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table id="transactions-table" className="w-full text-left text-xs">
-                <thead className="bg-[#F7F9F7] border-b border-[#DCE4DE] text-[#68736C] font-medium">
-                  <tr>
-                    <th className="py-2.5 px-4">Sana</th>
-                    <th className="py-2.5 px-4">Tavsif</th>
-                    <th className="py-2.5 px-4">Kategoriya</th>
-                    <th className="py-2.5 px-4 text-right">Summa</th>
-                    <th className="py-2.5 px-4 text-right">Amal yoki batafsil ko‘rish</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#DCE4DE]">
-                  {Object.entries(groupedTransactions).map(([date, dateTxList]) => (
-                    <React.Fragment key={date}>
-                      {/* Date Group Header */}
-                      <tr className="bg-[#F7F9F7]/70">
-                        <td colSpan={6} className="py-1.5 px-4 text-[11px] font-semibold text-[#68736C]">
-                          <span className="inline-flex items-center gap-1.5">
-                            <Calendar className="h-3 w-3 text-[#176B45]" />
-                            {formatDateHeader(date)}
-                          </span>
-                        </td>
-                      </tr>
-
-                      {dateTxList.map((tx) => {
-                        const isIncome = tx.type === 'income';
-                        const isExpense = tx.type === 'expense';
-                        const rawAmount = Math.abs(Number(tx.amount) || 0);
-
-                        return (
-                          <tr
-                            key={tx.id}
-                            id={`transaction-row-${tx.id}`}
-                            className="hover:bg-[#F7F9F7]/60 transition-colors group"
-                          >
-                            <td className="py-3 px-4 font-mono text-xs text-[#68736C] whitespace-nowrap">
-                              {tx.transaction_date}
-                            </td>
-                            <td className="py-3 px-4">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedTxDetail(tx)}
-                                className="text-left font-medium text-[#17211B] hover:text-[#176B45] transition-colors"
-                              >
-                                {tx.description}
-                              </button>
-                              {(tx.merchant || tx.notes) && (
-                                <div className="text-[11px] text-[#68736C] mt-0.5 line-clamp-1">
-                                  {tx.merchant && <span className="font-medium mr-1.5">{tx.merchant}</span>}
-                                  {tx.notes && <span>{tx.notes}</span>}
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 whitespace-nowrap">
-                              {tx.categories ? (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-[#F7F9F7] border border-[#DCE4DE] px-2 py-0.5 text-[11px] font-medium text-[#17211B]">
-                                  {tx.categories.name}
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-[#68736C] italic">Kategoriyasiz</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-right whitespace-nowrap font-mono font-semibold">
-                              <div className="inline-flex items-center justify-end gap-2">
-                                <span
-                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
-                                    isIncome
-                                      ? 'bg-[#DDF3E5] text-[#176B45] border-[#176B45]/20'
-                                      : isExpense
-                                      ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                      : 'bg-[#F7F9F7] text-[#68736C] border-[#DCE4DE]'
-                                  }`}
-                                >
-                                  {isIncome ? 'Daromad' : isExpense ? 'Xarajat' : 'Noma’lum'}
-                                </span>
-                                <span
-                                  className={`font-mono font-semibold text-xs ${
-                                    isIncome ? 'text-[#176B45]' : isExpense ? 'text-[#17211B]' : 'text-[#68736C]'
-                                  }`}
-                                >
-                                  {isIncome ? '+ ' : isExpense ? '− ' : ''}
-                                  {formatTxAmount(rawAmount, tx.currency)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-right whitespace-nowrap">
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedTxDetail(tx)}
-                                  title="Batafsil ko‘rish"
-                                  className="p-1.5 text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7] rounded-lg transition-colors inline-flex items-center gap-1"
-                                >
-                                  <Info className="h-3.5 w-3.5" />
-                                  <span className="sr-only">Batafsil</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  id={`edit-tx-${tx.id}`}
-                                  onClick={() => {
-                                    setTransactionToEdit(tx);
-                                    setIsModalOpen(true);
-                                  }}
-                                  title="Tahrirlash"
-                                  className="p-1.5 text-[#68736C] hover:text-[#176B45] hover:bg-[#DDF3E5] rounded-lg transition-colors"
-                                >
-                                  <Edit2 className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  id={`delete-tx-${tx.id}`}
-                                  onClick={() => setTransactionToDelete(tx)}
-                                  title="O‘chirish"
-                                  className="p-1.5 text-[#68736C] hover:text-[#C74747] hover:bg-rose-50 rounded-lg transition-colors"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Readable List Grouped by Date */}
-            <div className="block sm:hidden divide-y divide-[#DCE4DE]">
-              {Object.entries(groupedTransactions).map(([date, dateTxList]) => (
-                <div key={date} className="p-3">
-                  <div className="text-[11px] font-semibold text-[#68736C] pb-2 flex items-center gap-1.5 border-b border-[#DCE4DE]">
-                    <Calendar className="h-3 w-3 text-[#176B45]" />
-                    {formatDateHeader(date)}
+          <div id="transactions-table" className="divide-y divide-[#D5DED7]">
+            {Object.entries(groupedTransactions).map(([date, dateTxList]) => (
+              <div key={date}>
+                {/* Date Group Header */}
+                <div className="px-5 py-2.5 bg-[#F7F9F7] border-y border-[#D5DED7] first:border-t-0 flex items-center justify-between text-xs font-semibold text-[#47544C]">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5 text-[#176B45]" />
+                    <span>{formatDateHeader(date)}</span>
                   </div>
-                  <div className="divide-y divide-[#DCE4DE]/60">
-                    {dateTxList.map((tx) => {
-                      const isIncome = tx.type === 'income';
-                      const isExpense = tx.type === 'expense';
-                      const rawAmount = Math.abs(Number(tx.amount) || 0);
+                  <span className="text-xs text-[#5A675F] font-mono">
+                    {dateTxList.length} ta tranzaksiya
+                  </span>
+                </div>
 
-                      return (
-                        <div
-                          key={tx.id}
-                          className="py-2.5 flex items-start justify-between gap-3"
-                        >
+                {/* Transaction Items in beloved modern fintech style */}
+                <div className="divide-y divide-[#D5DED7]/60">
+                  {dateTxList.map((tx) => {
+                    const isIncome = tx.type === 'income';
+                    const rawAmount = Math.abs(Number(tx.amount) || 0);
+                    const cat = tx.categories;
+                    const catName = getCategoryDisplayName(cat?.name) || (isIncome ? 'Kirim' : 'Boshqa xarajat');
+
+                    return (
+                      <div
+                        key={tx.id}
+                        id={`transaction-row-${tx.id}`}
+                        onClick={() => setSelectedTxDetail(tx)}
+                        className="px-3.5 sm:px-5 py-3 sm:py-4 flex items-center justify-between hover:bg-[#F7F9F7] transition-all cursor-pointer group gap-2.5 sm:gap-4"
+                      >
+                        {/* Left: Direction Icon + Title + Metadata */}
+                        <div className="flex-1 min-w-0 flex items-center gap-2.5 sm:gap-3.5">
                           <div
-                            className="flex-1 cursor-pointer"
-                            onClick={() => setSelectedTxDetail(tx)}
+                            className={`h-9 w-9 sm:h-11 sm:w-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-2xs transition-transform group-hover:scale-105 ${
+                              isIncome ? 'bg-[#DDF3E5] text-[#176B45]' : 'bg-[#FEE2E2] text-[#C74747]'
+                            }`}
                           >
-                            <div className="font-semibold text-xs text-[#17211B]">
+                            {isIncome ? (
+                              <ArrowDownLeft className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+                            ) : (
+                              <ArrowUpRight className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-sm sm:text-base text-[#17211B] truncate group-hover:text-[#176B45] transition-colors leading-tight">
                               {tx.description}
                             </div>
-                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#68736C]">
-                              {tx.categories ? (
-                                <span className="text-[#176B45] font-medium">{tx.categories.name}</span>
-                              ) : (
-                                <span>Kategoriyasiz</span>
+                            <div className="text-xs text-[#5A675F] flex items-center gap-1.5 mt-1 whitespace-nowrap overflow-hidden">
+                              <span className="px-2 py-0.5 bg-[#F1F4F2] border border-[#D5DED7] rounded-md text-[#17211B] font-medium text-[11px] truncate max-w-[120px] sm:max-w-[160px] shrink-0">
+                                {catName}
+                              </span>
+                              <span className="text-[#D5DED7] shrink-0">•</span>
+                              <span className="font-mono text-[11px] text-[#5A675F] shrink-0">
+                                {tx.transaction_date}
+                              </span>
+                              {tx.merchant && tx.merchant !== tx.description && (
+                                <>
+                                  <span className="hidden sm:inline text-[#D5DED7]">•</span>
+                                  <span className="hidden sm:inline truncate max-w-[160px] text-[#47544C] text-[11px]">
+                                    {tx.merchant}
+                                  </span>
+                                </>
                               )}
-                              {tx.merchant && <span>• {tx.merchant}</span>}
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <span
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                                  isIncome
-                                    ? 'bg-[#DDF3E5] text-[#176B45] border-[#176B45]/20'
-                                    : isExpense
-                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                    : 'bg-[#F7F9F7] text-[#68736C] border-[#DCE4DE]'
-                                }`}
-                              >
-                                {isIncome ? 'Daromad' : isExpense ? 'Xarajat' : 'Noma’lum'}
-                              </span>
-                              <span
-                                className={`text-xs font-mono font-bold ${
-                                  isIncome ? 'text-[#176B45]' : isExpense ? 'text-[#17211B]' : 'text-[#68736C]'
-                                }`}
-                              >
-                                {isIncome ? '+ ' : isExpense ? '− ' : ''}
-                                {formatTxAmount(rawAmount, tx.currency)}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-end gap-2 mt-1">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedTxDetail(tx)}
-                                className="text-[11px] text-[#68736C] hover:text-[#17211B]"
-                              >
-                                Batafsil
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setTransactionToEdit(tx);
-                                  setIsModalOpen(true);
-                                }}
-                                className="text-[11px] text-[#68736C] hover:text-[#176B45]"
-                              >
-                                Tahrirlash
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setTransactionToDelete(tx)}
-                                className="text-[11px] text-[#C74747]"
-                              >
-                                O‘chirish
-                              </button>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        {/* Right: Amount + Actions */}
+                        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3 shrink-0 pl-1">
+                          <div
+                            className={`font-mono font-bold text-sm sm:text-base whitespace-nowrap tabular-nums ${
+                              isIncome ? 'text-[#176B45]' : 'text-[#C74747]'
+                            }`}
+                          >
+                            {isIncome ? '+' : '-'}
+                            {formatTxAmount(rawAmount, tx.currency)}
+                          </div>
+
+                          {/* Quick Action Buttons */}
+                          <div
+                            className="flex items-center gap-0.5 sm:gap-1 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              id={`edit-tx-${tx.id}`}
+                              onClick={() => {
+                                setTransactionToEdit(tx);
+                                setIsModalOpen(true);
+                              }}
+                              title="Tahrirlash"
+                              aria-label="Tahrirlash"
+                              className="min-h-[28px] min-w-[28px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center p-1 sm:p-2 text-[#5A675F] hover:text-[#176B45] hover:bg-[#DDF3E5] rounded-lg sm:rounded-xl transition-all active:scale-95"
+                            >
+                              <Edit2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              id={`delete-tx-${tx.id}`}
+                              onClick={() => setTransactionToDelete(tx)}
+                              title="O‘chirish"
+                              aria-label="O‘chirish"
+                              className="min-h-[28px] min-w-[28px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center p-1 sm:p-2 text-[#5A675F] hover:text-[#C74747] hover:bg-rose-50 rounded-lg sm:rounded-xl transition-all active:scale-95"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
 
         {/* Pagination Footer */}
         {!isLoading && totalCount > 0 && (
-          <div className="p-3.5 bg-[#F7F9F7] border-t border-[#DCE4DE] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#68736C]">
+          <div className="p-4 bg-[#F7F9F7] border-t border-[#D5DED7] flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-[#47544C]">
             <div>
               Ko‘rsatilmoqda:{' '}
               <span className="text-[#17211B] font-semibold">{(page - 1) * pageSize + 1}</span> dan{' '}
@@ -787,13 +679,13 @@ export default function TransactionsManager() {
                   setPage((p) => Math.max(1, p - 1));
                   setIsLoading(true);
                 }}
-                className="inline-flex items-center gap-1 rounded-xl border border-[#DCE4DE] bg-white px-2.5 py-1 text-xs text-[#17211B] hover:bg-[#F7F9F7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#D5DED7] bg-white px-3 py-1.5 text-sm text-[#17211B] hover:bg-[#F7F9F7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[38px]"
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
+                <ChevronLeft className="h-4 w-4" />
                 <span>Oldingi</span>
               </button>
 
-              <span className="px-2 text-[#17211B] font-mono font-medium text-xs">
+              <span className="px-3 text-[#17211B] font-mono font-medium text-sm tabular-nums">
                 {page} / {totalPages}
               </span>
 
@@ -805,10 +697,10 @@ export default function TransactionsManager() {
                   setPage((p) => Math.min(totalPages, p + 1));
                   setIsLoading(true);
                 }}
-                className="inline-flex items-center gap-1 rounded-xl border border-[#DCE4DE] bg-white px-2.5 py-1 text-xs text-[#17211B] hover:bg-[#F7F9F7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#D5DED7] bg-white px-3 py-1.5 text-sm text-[#17211B] hover:bg-[#F7F9F7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[38px]"
               >
                 <span>Keyingi</span>
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -818,25 +710,26 @@ export default function TransactionsManager() {
       {/* Transaction Detail View Modal */}
       {selectedTxDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-[#DCE4DE] bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE4DE]">
-              <h3 className="text-base font-bold text-[#17211B]">Tranzaksiya tafsilotlari</h3>
+          <div className="w-full max-w-md rounded-2xl border border-[#D5DED7] bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#D5DED7]">
+              <h3 className="text-lg font-semibold text-[#17211B]">Tranzaksiya tafsilotlari</h3>
               <button
                 type="button"
                 onClick={() => setSelectedTxDetail(null)}
-                className="rounded-xl p-1 text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7]"
+                className="rounded-xl p-2 text-[#5A675F] hover:text-[#17211B] hover:bg-[#F7F9F7] min-h-[40px] min-w-[40px] flex items-center justify-center"
+                aria-label="Yopish"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="py-4 space-y-3 text-xs">
-              <div className="flex justify-between items-center py-1 border-b border-[#DCE4DE]/60">
-                <span className="text-[#68736C]">Tavsif</span>
-                <span className="font-semibold text-[#17211B]">{selectedTxDetail.description}</span>
+            <div className="py-4 space-y-3.5 text-sm">
+              <div className="flex justify-between items-center py-1.5 border-b border-[#D5DED7]/60">
+                <span className="text-[#47544C]">Tavsif</span>
+                <span className="font-medium text-[#17211B] text-right">{selectedTxDetail.description}</span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-[#DCE4DE]/60">
-                <span className="text-[#68736C]">Turi</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-[#D5DED7]/60">
+                <span className="text-[#47544C]">Turi</span>
                 <span
                   className={`font-semibold ${
                     selectedTxDetail.type === 'expense' ? 'text-[#C74747]' : 'text-[#176B45]'
@@ -845,35 +738,40 @@ export default function TransactionsManager() {
                   {selectedTxDetail.type === 'expense' ? 'Chiqim (Xarajat)' : 'Kirim (Daromad)'}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-[#DCE4DE]/60">
-                <span className="text-[#68736C]">Summa</span>
-                <span className="font-mono font-bold text-sm text-[#17211B]">
+              <div className="flex justify-between items-center py-1.5 border-b border-[#D5DED7]/60">
+                <span className="text-[#47544C]">Summa</span>
+                <span
+                  className={`font-mono font-bold tabular-nums text-base ${
+                    selectedTxDetail.type === 'expense' ? 'text-[#C74747]' : 'text-[#176B45]'
+                  }`}
+                >
+                  {selectedTxDetail.type === 'expense' ? '-' : '+'}
                   {formatTxAmount(selectedTxDetail.amount, selectedTxDetail.currency)}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-[#DCE4DE]/60">
-                <span className="text-[#68736C]">Sana</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-[#D5DED7]/60">
+                <span className="text-[#47544C]">Sana</span>
                 <span className="font-mono text-[#17211B]">{selectedTxDetail.transaction_date}</span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-[#DCE4DE]/60">
-                <span className="text-[#68736C]">Kategoriya</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-[#D5DED7]/60">
+                <span className="text-[#47544C]">Kategoriya</span>
                 <span className="font-medium text-[#17211B]">
-                  {selectedTxDetail.categories?.name || 'Kategoriyasiz'}
+                  {selectedTxDetail.categories ? getCategoryDisplayName(selectedTxDetail.categories.name) : 'Kategoriyasiz'}
                 </span>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-[#DCE4DE]/60">
-                <span className="text-[#68736C]">Savdo nuqtasi</span>
+              <div className="flex justify-between items-center py-1.5 border-b border-[#D5DED7]/60">
+                <span className="text-[#47544C]">Savdo nuqtasi</span>
                 <span className="text-[#17211B]">{selectedTxDetail.merchant || '—'}</span>
               </div>
               {selectedTxDetail.notes && (
-                <div className="py-1">
-                  <span className="text-[#68736C] block mb-1">Izoh</span>
-                  <p className="bg-[#F7F9F7] p-2.5 rounded-xl border border-[#DCE4DE] text-[#17211B]">{selectedTxDetail.notes}</p>
+                <div className="py-1.5">
+                  <span className="text-[#47544C] block mb-1.5 font-medium">Izoh</span>
+                  <p className="bg-[#F7F9F7] p-3.5 rounded-xl border border-[#D5DED7] text-sm sm:text-base text-[#17211B] leading-relaxed">{selectedTxDetail.notes}</p>
                 </div>
               )}
             </div>
 
-            <div className="pt-3 border-t border-[#DCE4DE] flex items-center justify-end gap-2">
+            <div className="pt-4 border-t border-[#D5DED7] flex items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => {
@@ -882,15 +780,15 @@ export default function TransactionsManager() {
                   setTransactionToEdit(tx);
                   setIsModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[#DCE4DE] bg-white px-3 py-1.5 text-xs font-semibold text-[#17211B] hover:bg-[#F7F9F7]"
+                className="inline-flex items-center gap-2 rounded-xl border border-[#D5DED7] bg-white px-4 py-2 min-h-[44px] text-sm font-semibold text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
               >
-                <Edit2 className="h-3.5 w-3.5" />
+                <Edit2 className="h-4 w-4" />
                 <span>Tahrirlash</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedTxDetail(null)}
-                className="rounded-xl bg-[#176B45] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#125536] shadow-fintech-card"
+                className="rounded-xl bg-[#176B45] px-5 py-2 min-h-[44px] text-sm font-semibold text-white hover:bg-[#125536] shadow-fintech-card transition-colors"
               >
                 Yopish
               </button>

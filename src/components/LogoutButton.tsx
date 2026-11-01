@@ -25,18 +25,17 @@ export default function LogoutButton({
       type="button"
       onClick={handleLogout}
       disabled={isPending}
-      className={`inline-flex items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3.5 py-2 text-xs font-medium text-[#171717] transition-colors hover:bg-[#F7F8F7] hover:text-[#B54736] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`min-h-[36px] sm:min-h-[40px] inline-flex items-center gap-1.5 sm:gap-2 rounded-xl border border-[#D5DED7] bg-white px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#17211B] transition-all hover:bg-red-50/50 hover:text-[#C74747] hover:border-red-200 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm active:scale-98 ${className}`}
     >
       {isPending ? (
         <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-[#737373]" />
+          <Loader2 className="h-4 w-4 animate-spin text-[#5A675F]" />
           <span>Chiqilmoqda...</span>
         </>
       ) : (
         <>
-          <LogOut className="h-3.5 w-3.5 text-[#737373]" />
+          <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#5A675F]" />
           <span>Chiqish</span>
-          <span className="sr-only">Sign Out</span>
         </>
       )}
     </button>

@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
-import { connection } from 'next/server';
 import { cache } from 'react';
 import {
   INTERNAL_AUTH_HEADER,
@@ -9,11 +8,6 @@ import {
 } from '@/lib/auth/internalAuth';
 
 export const createClient = cache(async () => {
-  try {
-    await connection();
-  } catch {
-    // Safe to ignore in test or non-request environments
-  }
   const cookieStore = await cookies();
   const allCookies = cookieStore.getAll();
   let verifiedUser: VerifiedInternalUser | null = null;
@@ -77,7 +71,7 @@ export const createClient = cache(async () => {
             id: verifiedUser!.id,
             email: verifiedUser!.email || undefined,
             app_metadata: {},
-            user_metadata: {},
+            user_metadata: verifiedUser!.metadata || {},
             aud: 'authenticated',
             created_at: new Date().toISOString(),
           },

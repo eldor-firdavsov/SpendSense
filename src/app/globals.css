@@ -1,34 +1,48 @@
 @import "tailwindcss";
 
 :root {
-  --app-bg: #f1f4f2;
+  /* SpendSense AI Design Tokens — Inspired by (Simple) Finance */
+  --app-bg: #f5f6f8;
   --surface: #ffffff;
-  --surface-subtle: #f7f9f7;
+  --surface-subtle: #f9fafb;
   --surface-raised: #ffffff;
-  --surface-green: #e5f4ea;
-  --surface-blue: #eaf0ff;
-  --surface-purple: #f0ebff;
-  --surface-amber: #fff3d9;
-  --surface-red: #fceaea;
-  --text-primary: #17211b;
-  --text-secondary: #68736c;
-  --text-muted: #87918a;
-  --border: #dce4de;
-  --border-strong: #c9d5cd;
-  --brand: #176b45;
-  --brand-deep: #124d35;
-  --brand-soft: #ddf3e5;
-  --income: #218653;
-  --expense: #c74747;
-  --blue: #4b75e8;
-  --purple: #8664d8;
-  --amber: #d99a32;
-  --shadow-card: 0 2px 8px rgba(23, 33, 27, 0.04);
-  --shadow-hover: 0 8px 24px rgba(23, 33, 27, 0.08);
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
+  --surface-green: #ecfdf5;
+  --surface-blue: #eff6ff;
+  --surface-purple: #f5f3ff;
+  --surface-amber: #fffbeb;
+  --surface-red: #fef2f2;
+
+  /* Neutral Typography Palette */
+  --text-primary: #18181b;    /* Zinc 900 */
+  --text-secondary: #52525b;  /* Zinc 600 */
+  --text-muted: #71717a;      /* Zinc 500 */
+
+  /* Structural Borders */
+  --border: #e5e7eb;          /* Neutral 200 */
+  --border-strong: #d1d5db;   /* Neutral 300 */
+
+  /* Brand & Financial Semantics */
+  --brand: #10b981;           /* Emerald 500 */
+  --brand-deep: #059669;      /* Emerald 600 */
+  --brand-soft: #ecfdf5;      /* Emerald 50 */
+  --income: #059669;          /* Emerald 600 */
+  --expense: #dc2626;         /* Red 600 */
+  --blue: #2563eb;
+  --purple: #7c3aed;
+  --amber: #d97706;
+
+  /* Soft Ambient Fintech Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.02);
+  --shadow-hover: 0 4px 14px rgba(0, 0, 0, 0.05);
+
+  /* Border Radii (12px, 16px, 20px, 24px) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+
+  /* Spacing Scale */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -36,6 +50,24 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Typography Scale */
+  --font-family-base: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --text-display: clamp(1.875rem, 3vw, 2.25rem);      /* 30px - 36px, weight 600 */
+  --text-h1: clamp(1.5rem, 2.4vw, 1.75rem);           /* 24px - 28px, weight 600 */
+  --text-h2: clamp(1.25rem, 1.8vw, 1.375rem);          /* 20px - 22px, weight 600 */
+  --text-h3: clamp(1.0625rem, 1.5vw, 1.1875rem);       /* 17px - 19px, weight 600 */
+  --text-card-title: 1rem;                             /* 16px, weight 500-600 */
+  --text-body-lg: 1.0625rem;                           /* 17px, weight 400 */
+  --text-body: 1rem;                                   /* 16px, weight 400 */
+  --text-body-sm: 0.9375rem;                           /* 15px, weight 400 */
+  --text-label: 0.875rem;                              /* 14px, weight 500 */
+  --text-caption: 0.8125rem;                           /* 13px, weight 400 */
+  --line-heading: 1.25;
+  --line-body: 1.6;
+  --line-compact: 1.45;
 }
 
 @theme inline {
@@ -61,8 +93,8 @@
   --color-blue: var(--blue);
   --color-purple: var(--purple);
   --color-amber: var(--amber);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-inter), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -73,8 +105,34 @@ html,
 body {
   background-color: var(--app-bg);
   color: var(--text-primary);
-  font-family: var(--font-geist-sans), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: var(--line-body);
   min-height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide scrollbars while allowing touch scrolling */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Global Base Typography */
+p {
+  font-size: 1rem;
+  line-height: var(--line-body);
 }
 
 /* Tabular numerals for financial amounts */
@@ -84,18 +142,114 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Master Bento Grid Utilities */
+/* Semantic Typography Utility Classes */
+.typography-display {
+  font-size: var(--text-display);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+}
+
+.typography-h1 {
+  font-size: var(--text-h1);
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.typography-h2 {
+  font-size: var(--text-h2);
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+}
+
+.typography-h3 {
+  font-size: var(--text-h3);
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.typography-card-title {
+  font-size: var(--text-card-title);
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.typography-body {
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.typography-body-sm {
+  font-size: var(--text-body-sm);
+  line-height: var(--line-compact);
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.typography-label {
+  font-size: var(--text-label);
+  line-height: var(--line-compact);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.typography-caption {
+  font-size: var(--text-caption);
+  line-height: var(--line-compact);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Financial Values with Tabular Numerals */
+.typography-financial-hero {
+  font-size: clamp(1.875rem, 3.2vw, 2.25rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.typography-financial-card {
+  font-size: clamp(1.25rem, 1.8vw, 1.5rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.typography-financial-sm {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus and Accessibility Rings */
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Clean Card & Layout Utilities */
 .app-main {
   width: 100%;
   max-width: 1760px;
   margin-inline: auto;
-  padding-inline: clamp(16px, 2.5vw, 44px);
+  padding-inline: clamp(16px, 2.5vw, 40px);
 }
 
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: clamp(14px, 1.25vw, 22px);
+  gap: clamp(14px, 1.3vw, 20px);
   align-items: stretch;
 }
 
@@ -106,27 +260,27 @@ body {
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-card);
-  padding: clamp(16px, 1.4vw, 24px);
+  padding: clamp(16px, 1.4vw, 22px);
 }
 
 .bento-tile-green {
-  background-color: var(--surface-green);
-  border-color: rgba(33, 134, 83, 0.2);
+  background-color: #ffffff;
+  border-color: var(--border);
 }
 
 .bento-tile-blue {
-  background-color: var(--surface-blue);
-  border-color: rgba(75, 117, 232, 0.2);
+  background-color: #ffffff;
+  border-color: var(--border);
 }
 
 .bento-tile-purple {
-  background-color: var(--surface-purple);
-  border-color: rgba(134, 100, 216, 0.2);
+  background-color: #ffffff;
+  border-color: var(--border);
 }
 
 .bento-tile-amber {
-  background-color: var(--surface-amber);
-  border-color: rgba(217, 154, 50, 0.2);
+  background-color: #ffffff;
+  border-color: var(--border);
 }
 
 .bento-tile-interactive {
@@ -134,71 +288,9 @@ body {
 }
 
 .bento-tile-interactive:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-hover);
   border-color: var(--border-strong);
-}
-
-/* Legacy layout support */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: clamp(16px, 1.5vw, 24px);
-}
-
-.balance-card {
-  grid-column: span 12;
-}
-
-@media (min-width: 1024px) {
-  .balance-card {
-    grid-column: span 7;
-  }
-}
-
-.summary-grid {
-  grid-column: span 12;
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 16px;
-}
-
-@media (min-width: 640px) {
-  .summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .summary-grid {
-    grid-column: span 5;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.analytics-main {
-  grid-column: span 12;
-}
-
-@media (min-width: 1024px) {
-  .analytics-main {
-    grid-column: span 8;
-  }
-}
-
-.analytics-side {
-  grid-column: span 12;
-}
-
-@media (min-width: 1024px) {
-  .analytics-side {
-    grid-column: span 4;
-  }
-}
-
-.responsive-card {
-  min-width: 0;
-  width: 100%;
 }
 
 /* Elevation shadows */
@@ -207,47 +299,45 @@ body {
 }
 
 .shadow-fintech-elevated {
-  box-shadow: 0 4px 20px -2px rgba(23, 107, 69, 0.06), var(--shadow-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
 .shadow-fintech-modal {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
 }
 
-/* Override legacy dark markers to keep pristine light theme */
-.bg-zinc-950,
-.bg-zinc-950\/80,
-.bg-zinc-950\/90,
-.bg-zinc-950\/60,
-.bg-zinc-900,
-.bg-zinc-900\/30,
-.bg-zinc-900\/40,
-.bg-zinc-900\/50,
-.bg-zinc-900\/60,
-.bg-zinc-900\/80 {
-  background-color: #ffffff !important;
+/* ── Fintech Skeleton Shimmer Animation System ── */
+@keyframes fintech-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
-.bg-zinc-800,
-.bg-zinc-800\/40,
-.bg-zinc-800\/50,
-.bg-zinc-800\/60,
-.bg-zinc-800\/80 {
-  background-color: #f7f9f7 !important;
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #eef0f2 0%,
+    #f8f9fa 50%,
+    #eef0f2 100%
+  );
+  background-size: 200% 100%;
+  animation: fintech-shimmer 1.8s ease-in-out infinite;
+  border-radius: var(--radius-md, 12px);
 }
 
-.border-zinc-800,
-.border-zinc-800\/60,
-.border-zinc-800\/80,
-.border-zinc-700 {
-  border-color: #dce4de !important;
+.skeleton-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-.text-zinc-100,
-.text-zinc-200 {
-  color: #17211b !important;
-}
-
-.text-zinc-300 {
-  color: #68736c !important;
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none !important;
+    background: #eef0f2 !important;
+  }
 }

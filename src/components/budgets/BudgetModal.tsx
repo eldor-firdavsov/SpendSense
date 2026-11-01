@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import type { BudgetWithProgress } from '@/lib/budgets/schemas';
+import { getCategoryDisplayName } from '@/lib/categories/schemas';
 
 interface CategoryOption {
   id: string;
@@ -36,7 +37,7 @@ export default function BudgetModal({
 
   const [name, setName] = useState(budgetToEdit?.name || '');
   const [amount, setAmount] = useState(budgetToEdit ? String(budgetToEdit.amount) : '');
-  const [currency, setCurrency] = useState(budgetToEdit?.currency || 'UZS');
+  const currency = budgetToEdit?.currency || 'UZS';
   const [periodType, setPeriodType] = useState<'monthly' | 'weekly' | 'custom'>(
     budgetToEdit?.period_type || 'monthly'
   );
@@ -103,96 +104,84 @@ export default function BudgetModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-      <div className="w-full max-w-md rounded-2xl border border-[#DCE4DE] bg-white p-6 shadow-xl space-y-4 my-8">
-        <div className="flex items-center justify-between pb-3 border-b border-[#DCE4DE]">
-          <h2 className="text-base font-bold text-[#17211B]">
+      <div className="w-full max-w-md rounded-2xl border border-[#D5DED7] bg-white p-6 sm:p-7 shadow-xl space-y-4 my-8">
+        <div className="flex items-center justify-between pb-3.5 border-b border-[#D5DED7]">
+          <h2 className="text-xl font-semibold text-[#17211B]">
             {isEditing ? 'Budjetni tahrirlash' : 'Yangi budjet yaratish'}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-xl text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7]"
+            className="p-2 rounded-xl text-[#5A675F] hover:text-[#17211B] hover:bg-[#F7F9F7] min-h-[40px] min-w-[40px] flex items-center justify-center transition-colors"
+            aria-label="Yopish"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-[#C74747] text-xs">
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-[#C74747] text-sm font-medium">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-4 text-sm">
           <div>
-            <label className="block text-[#68736C] font-medium mb-1">Budjet nomi</label>
+            <label className="block text-sm font-medium text-[#47544C] mb-1.5">Budjet nomi</label>
             <input
               id="budget-name-input"
               type="text"
               placeholder="Masalan: Oylik oziq-ovqat"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-white border border-[#DCE4DE] rounded-xl px-3 py-2 text-[#17211B] focus:border-[#176B45] focus:outline-none transition-all"
+              className="w-full min-h-[48px] bg-white border border-[#D5DED7] rounded-xl px-3.5 py-2.5 text-sm sm:text-base text-[#17211B] placeholder-[#5A675F] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <label className="block text-[#68736C] font-medium mb-1">Limit summasi *</label>
-              <input
-                id="budget-amount-input"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                placeholder="1000000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full bg-white border border-[#DCE4DE] rounded-xl px-3 py-2 text-[#17211B] font-semibold focus:border-[#176B45] focus:outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-[#68736C] font-medium mb-1">Valyuta</label>
-              <select
-                id="budget-currency-select"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full bg-white border border-[#DCE4DE] rounded-xl px-2.5 py-2 text-[#17211B] focus:border-[#176B45] focus:outline-none transition-all"
-              >
-                <option value="UZS">UZS (soʻm)</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-[#47544C] mb-1.5">Limit summasi (so‘m) *</label>
+            <input
+              id="budget-amount-input"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              placeholder="1000000"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full min-h-[48px] bg-white border border-[#D5DED7] rounded-xl px-3.5 py-2.5 text-base font-semibold font-mono tabular-nums text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
+            />
           </div>
 
           <div>
-            <label className="block text-[#68736C] font-medium mb-1">Kategoriya</label>
+            <label className="block text-sm font-medium text-[#47544C] mb-1.5">Kategoriya</label>
             <select
               id="budget-category-select"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full bg-white border border-[#DCE4DE] rounded-xl px-3 py-2 text-[#17211B] focus:border-[#176B45] focus:outline-none transition-all"
+              className="w-full min-h-[48px] bg-white border border-[#D5DED7] rounded-xl px-3.5 py-2.5 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             >
               <option value="">Umumiy (barcha xarajatlar uchun)</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {getCategoryDisplayName(c.name)}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-[#68736C] font-medium mb-1">Davr turi</label>
-            <div className="grid grid-cols-3 gap-1.5 p-0.5 rounded-xl bg-[#F7F9F7] border border-[#DCE4DE]">
+            <label className="block text-sm font-medium text-[#47544C] mb-1.5">Davr turi</label>
+            <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-[#F7F9F7] border border-[#D5DED7]">
               {(['monthly', 'weekly', 'custom'] as const).map((pt) => (
                 <button
                   key={pt}
                   type="button"
                   onClick={() => setPeriodType(pt)}
-                  className={`py-1.5 rounded-lg text-center transition-all ${
+                  className={`min-h-[38px] py-2 rounded-lg text-sm text-center transition-all ${
                     periodType === pt
-                      ? 'bg-white text-[#176B45] font-semibold shadow-fintech-card'
-                      : 'text-[#68736C] hover:text-[#17211B]'
+                      ? 'bg-[#176B45] text-white font-semibold shadow-xs'
+                      : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
                   }`}
                 >
                   {pt === 'monthly' ? 'Oylik' : pt === 'weekly' ? 'Haftalik' : 'Maxsus'}
@@ -201,35 +190,35 @@ export default function BudgetModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#68736C] font-medium mb-1">Boshlanish</label>
+              <label className="block text-sm font-medium text-[#47544C] mb-1.5">Boshlanish</label>
               <input
                 id="budget-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-white border border-[#DCE4DE] rounded-xl px-2.5 py-1.5 text-[#17211B] focus:border-[#176B45] focus:outline-none transition-all"
+                className="w-full min-h-[44px] bg-white border border-[#D5DED7] rounded-xl px-3 py-2 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
               />
             </div>
             <div>
-              <label className="block text-[#68736C] font-medium mb-1">Tugash</label>
+              <label className="block text-sm font-medium text-[#47544C] mb-1.5">Tugash</label>
               <input
                 id="budget-end-date"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full bg-white border border-[#DCE4DE] rounded-xl px-2.5 py-1.5 text-[#17211B] focus:border-[#176B45] focus:outline-none transition-all"
+                className="w-full min-h-[44px] bg-white border border-[#D5DED7] rounded-xl px-3 py-2 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#DCE4DE]">
+          <div className="flex items-center justify-end gap-3 pt-3.5 border-t border-[#D5DED7]">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 rounded-xl border border-[#DCE4DE] bg-white text-xs font-semibold text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl border border-[#D5DED7] bg-white text-sm font-semibold text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
             >
               Bekor qilish
             </button>
@@ -237,9 +226,9 @@ export default function BudgetModal({
               id="save-budget-btn"
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#176B45] text-white text-xs font-semibold hover:bg-[#125536] transition-colors disabled:opacity-50 shadow-fintech-card"
+              className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl bg-[#176B45] text-white text-sm font-semibold hover:bg-[#125536] transition-colors disabled:opacity-50 shadow-fintech-card"
             >
-              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               <span>{isEditing ? 'Yangilash' : 'Saqlash'}</span>
             </button>
           </div>

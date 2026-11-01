@@ -44,11 +44,11 @@ export function BentoChartCard({
             </div>
           )}
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-[#17211B] tracking-tight">
+            <h3 className="text-base sm:text-lg font-semibold text-[#17211B] tracking-tight">
               {title}
             </h3>
             {subtitle && (
-              <p className="text-[11px] sm:text-xs text-[#68736C]">
+              <p className="text-sm sm:text-base text-[#47544C] mt-0.5">
                 {subtitle}
               </p>
             )}
@@ -57,7 +57,7 @@ export function BentoChartCard({
 
         <div className="flex flex-wrap items-center gap-2.5">
           {legend && legend.length > 0 && (
-            <div className="flex items-center gap-3 text-xs text-[#68736C] mr-1">
+            <div className="flex items-center gap-3 text-xs sm:text-sm text-[#47544C] mr-1">
               {legend.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-1.5">
                   <span
@@ -81,8 +81,8 @@ export function BentoChartCard({
           children
         ) : (
           emptyState || (
-            <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-[#DCE4DE] rounded-xl bg-[#F7F9F7]">
-              <p className="text-xs text-[#68736C]">
+            <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-[#D5DED7] rounded-xl bg-[#F7F9F7]">
+              <p className="text-sm sm:text-base text-[#47544C]">
                 Tanlangan davr uchun ma’lumotlar mavjud emas
               </p>
             </div>

@@ -215,9 +215,9 @@ describe('SpendSense AI — Real Financial Actions & Supabase Persistence Tests'
     assert.equal(analytics.data.totalIncome, 200, 'Current month income must now reflect $200');
   });
 
-  test('3. Scenario 3: “Kecha oziq-ovqatga 35 dollar sarfladim.” detects expense, confirms, and creates real transaction', async () => {
+  test('3. Scenario 3: “Bugun oziq-ovqatga 35 dollar sarfladim.” detects expense, confirms, and creates real transaction', async () => {
     // 3.1 User prompt
-    const res1 = await askFinancialAdvisor('Kecha oziq-ovqatga 35 dollar sarfladim.', conversationAId, clientA);
+    const res1 = await askFinancialAdvisor('Bugun oziq-ovqatga 35 dollar sarfladim.', conversationAId, clientA);
     assert.equal(res1.status, 200);
     assert.ok(res1.data);
     const answer1 = res1.data.answer.toLowerCase();

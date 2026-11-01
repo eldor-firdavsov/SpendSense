@@ -56,14 +56,14 @@ function CategoryModalForm({
   };
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[#DCE4DE] bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150 my-8">
+    <div className="w-full max-w-md rounded-2xl border border-[#D5DED7] bg-white p-6 sm:p-7 shadow-xl animate-in fade-in zoom-in-95 duration-150 my-8">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#DCE4DE]">
+      <div className="flex items-center justify-between pb-4 border-b border-[#D5DED7]">
         <div>
-          <h2 id="category-modal-title" className="text-base sm:text-lg font-bold text-[#17211B] tracking-tight">
+          <h2 id="category-modal-title" className="text-lg sm:text-xl font-semibold text-[#17211B] tracking-tight">
             {isEditing ? 'Kategoriyani tahrirlash' : 'Maxsus kategoriya yaratish'}
           </h2>
-          <p className="text-xs text-[#68736C] mt-0.5">
+          <p className="text-sm sm:text-base text-[#47544C] mt-1">
             {isEditing
               ? 'Maxsus kategoriya parametrlarini yangilang.'
               : 'Xarajat yoki daromadlaringiz uchun yangi kategoriya qo‘shing.'}
@@ -73,7 +73,7 @@ function CategoryModalForm({
           type="button"
           id="category-modal-close-btn"
           onClick={onClose}
-          className="rounded-xl p-1.5 text-[#68736C] hover:bg-[#F7F9F7] hover:text-[#17211B] transition-colors"
+          className="rounded-xl p-2 text-[#5A675F] hover:bg-[#F7F9F7] hover:text-[#17211B] transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
@@ -83,28 +83,28 @@ function CategoryModalForm({
       {formError && (
         <div
           id="category-modal-error"
-          className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-[#C74747] flex items-center gap-2"
+          className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-[#C74747] flex items-center gap-2"
         >
           <span>{formError}</span>
         </div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+      <form onSubmit={handleSubmit} className="mt-5 space-y-4">
         {/* Type Selector */}
         <div>
-          <label className="block text-xs font-medium text-[#68736C] mb-1.5">
+          <label className="block text-sm font-medium text-[#47544C] mb-2">
             Kategoriya turi *
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               id="category-type-expense"
               onClick={() => setType('expense')}
-              className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
+              className={`min-h-[44px] py-2 px-3 rounded-xl text-sm font-semibold border transition-all ${
                 type === 'expense'
-                  ? 'border-[#C74747] bg-red-50 text-[#C74747]'
-                  : 'border-[#DCE4DE] bg-white text-[#68736C] hover:bg-[#F7F9F7]'
+                  ? 'border-[#C74747] bg-red-50 text-[#C74747] shadow-xs'
+                  : 'border-[#D5DED7] bg-white text-[#47544C] hover:bg-[#F7F9F7]'
               }`}
             >
               Chiqim
@@ -113,10 +113,10 @@ function CategoryModalForm({
               type="button"
               id="category-type-income"
               onClick={() => setType('income')}
-              className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
+              className={`min-h-[44px] py-2 px-3 rounded-xl text-sm font-semibold border transition-all ${
                 type === 'income'
-                  ? 'border-[#176B45] bg-[#DDF3E5] text-[#176B45]'
-                  : 'border-[#DCE4DE] bg-white text-[#68736C] hover:bg-[#F7F9F7]'
+                  ? 'border-[#176B45] bg-[#DDF3E5] text-[#176B45] shadow-xs'
+                  : 'border-[#D5DED7] bg-white text-[#47544C] hover:bg-[#F7F9F7]'
               }`}
             >
               Kirim
@@ -126,11 +126,11 @@ function CategoryModalForm({
 
         {/* Name */}
         <div>
-          <label htmlFor="category-name-input" className="block text-xs font-medium text-[#68736C] mb-1">
+          <label htmlFor="category-name-input" className="block text-sm font-medium text-[#47544C] mb-1.5">
             Kategoriya nomi *
           </label>
           <div className="relative">
-            <Tag className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#68736C]" />
+            <Tag className="pointer-events-none absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-[#5A675F]" />
             <input
               id="category-name-input"
               type="text"
@@ -138,45 +138,46 @@ function CategoryModalForm({
               placeholder="Masalan: Kofe yoki Freelance"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white py-2.5 pl-9 pr-3 text-xs text-[#17211B] placeholder-[#68736C] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45]"
+              className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white py-2.5 pl-10 pr-3.5 text-sm sm:text-base text-[#17211B] placeholder-[#8C9890] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20"
             />
           </div>
         </div>
 
         {/* Description */}
         <div>
-          <label htmlFor="category-desc-input" className="block text-xs font-medium text-[#68736C] mb-1">
+          <label htmlFor="category-desc-input" className="block text-sm font-medium text-[#47544C] mb-1.5">
             Qisqacha izoh (ixtiyoriy)
           </label>
           <div className="relative">
-            <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#68736C]" />
+            <FileText className="pointer-events-none absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-[#5A675F]" />
             <input
               id="category-desc-input"
               type="text"
               placeholder="Masalan: Qahvaxona va kichik tushliklar"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white py-2.5 pl-9 pr-3 text-xs text-[#17211B] placeholder-[#68736C] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45]"
+              className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white py-2.5 pl-10 pr-3.5 text-sm sm:text-base text-[#17211B] placeholder-[#8C9890] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20"
             />
           </div>
         </div>
 
         {/* Color Palette */}
         <div>
-          <label className="block text-xs font-medium text-[#68736C] mb-1.5">
+          <label className="block text-sm font-medium text-[#47544C] mb-2">
             Belgi rangi
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {['#176B45', '#2563EB', '#D97706', '#C74747', '#7C3AED', '#DB2777', '#68736C'].map(
               (c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className={`h-7 w-7 rounded-full transition-transform ${
-                    color === c ? 'ring-2 ring-offset-2 ring-[#17211B] scale-110' : 'opacity-80 hover:opacity-100'
+                  className={`h-8 w-8 rounded-full transition-transform ${
+                    color === c ? 'ring-2 ring-offset-2 ring-[#17211B] scale-110 shadow-sm' : 'opacity-85 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: c }}
+                  aria-label={`Tanlash rangi: ${c}`}
                 />
               )
             )}
@@ -184,13 +185,13 @@ function CategoryModalForm({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DCE4DE]">
+        <div className="flex items-center justify-end gap-3 pt-5 border-t border-[#D5DED7]">
           <button
             type="button"
             id="category-modal-cancel-btn"
             onClick={onClose}
             disabled={isSaving}
-            className="rounded-xl border border-[#DCE4DE] bg-white px-4 py-2 text-xs font-medium text-[#17211B] hover:bg-[#F7F9F7] transition-colors disabled:opacity-50"
+            className="min-h-[44px] rounded-xl border border-[#D5DED7] bg-white px-5 py-2.5 text-sm font-medium text-[#47544C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors disabled:opacity-50"
           >
             Bekor qilish
           </button>
@@ -198,9 +199,9 @@ function CategoryModalForm({
             type="submit"
             id="category-modal-save-btn"
             disabled={isSaving}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#176B45] px-4 py-2 text-xs font-semibold text-white hover:bg-[#125536] transition-colors disabled:opacity-50 shadow-fintech-card"
+            className="inline-flex items-center gap-2 min-h-[44px] rounded-xl bg-[#176B45] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#125536] transition-colors disabled:opacity-50 shadow-xs"
           >
-            {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
             <span>{isSaving ? 'Saqlanmoqda...' : 'Saqlash'}</span>
           </button>
         </div>

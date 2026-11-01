@@ -33,11 +33,11 @@ export function BentoSection({
               </div>
             )}
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-[#17211B] tracking-tight">
+              <h2 className="text-base sm:text-lg font-semibold text-[#17211B] tracking-tight">
                 {title}
               </h2>
               {subtitle && (
-                <p className="text-[11px] sm:text-xs text-[#68736C]">
+                <p className="text-sm sm:text-base text-[#47544C] mt-0.5">
                   {subtitle}
                 </p>
               )}

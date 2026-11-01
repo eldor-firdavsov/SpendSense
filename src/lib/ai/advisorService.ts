@@ -43,8 +43,13 @@ async function gatherUserFinancialContext(
   userId: string,
   supabase: SupabaseClient
 ): Promise<string> {
-  // Gather all transactions, budgets, and goals concurrently
-  const [allTxRes, budgetsRes, goalsRes] = await Promise.all([
+  // Gather profile, all transactions, budgets, and goals concurrently
+  const [profileRes, allTxRes, budgetsRes, goalsRes] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('first_name, last_name, declared_monthly_income, declared_monthly_expenses, target_expense_reduction_percent, target_monthly_expenses, onboarding_completed')
+      .eq('id', userId)
+      .maybeSingle(),
     supabase
       .from('transactions')
       .select('id, amount, type, currency, transaction_date, merchant, description, category_id, categories(name)')
@@ -60,6 +65,7 @@ async function gatherUserFinancialContext(
       .eq('user_id', userId),
   ]);
 
+  const profile = profileRes.data;
   const allTxs = allTxRes.data || [];
   const budgets = budgetsRes.data || [];
   const goals = goalsRes.data || [];
@@ -301,6 +307,23 @@ async function gatherUserFinancialContext(
     }
   }
 
+  if (profile) {
+    lines.push(`\n=== FOYDALANUVCHINING REJALASHTIRILGAN ONBOARDING MA’LUMOTLARI (PLANNING ESTIMATES) ===`);
+    lines.push(`- DIQQAT: Ushbu raqamlar ro‘yxatdan o‘tishda rejalashtirish uchun kiritilgan baholashlar (taxminlar) bo‘lib, haqiqiy hisob balansi yoki tranzaksiya hisoblanmaydi.`);
+    if (profile.declared_monthly_income !== null && profile.declared_monthly_income !== undefined) {
+      lines.push(`- Rejalashtirilgan oylik daromad (taxmin): ${formatUzMoney(Number(profile.declared_monthly_income), 'UZS')}`);
+    }
+    if (profile.declared_monthly_expenses !== null && profile.declared_monthly_expenses !== undefined) {
+      lines.push(`- Rejalashtirilgan oylik xarajat (taxmin): ${formatUzMoney(Number(profile.declared_monthly_expenses), 'UZS')}`);
+    }
+    if (profile.target_expense_reduction_percent !== null && profile.target_expense_reduction_percent !== undefined) {
+      lines.push(`- Xarajatlarni kamaytirish maqsadi: ${profile.target_expense_reduction_percent}%`);
+    }
+    if (profile.target_monthly_expenses !== null && profile.target_monthly_expenses !== undefined) {
+      lines.push(`- Maqsadli oylik xarajat (rejada): ${formatUzMoney(Number(profile.target_monthly_expenses), 'UZS')}`);
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -309,6 +332,24 @@ async function gatherUserFinancialContext(
  */
 function buildDeterministicGroundedAnswer(question: string, context: string): string {
   const q = question.toLowerCase();
+
+  // If user account is brand new with 0 transactions
+  const hasZeroTransactions = context.includes('Jami tranzaksiyalar soni: 0 ta');
+  if (hasZeroTransactions) {
+    if (q.includes('xarajat') || q.includes('sarfla')) {
+      return 'Hozircha sizda haqiqiy xarajat tranzaksiyalari qayd etilmagan (0 soʻm). Xarajatlaringizni qo‘shishni boshlaganingizdan so‘ng, aniq tahlil va maslahatlar taqdim etiladi.';
+    }
+    if (q.includes('daromad') || q.includes('oylik') || q.includes('maosh') || q.includes('ish haqi')) {
+      return 'Hozircha hisobingizda haqiqiy daromad tranzaksiyalari mavjud emas (0 soʻm). Onboardingda kiritilgan reja bo‘yicha daromadingiz qayd etilgan bo‘lsa-da, haqiqiy mablag‘ kelib tushganda daromad tranzaksiyasini kiritishingiz mumkin.';
+    }
+    if (q.includes('balans') || q.includes('qoldiq') || q.includes('pulim')) {
+      return 'Hozirda umumiy hisob balansingiz 0 soʻm. Yangi daromad yoki xarajat kiritishingiz bilan balansingiz avtomatik hisoblanadi.';
+    }
+    if (q.includes('maqsad') || q.includes('jamg‘arma') || q.includes('jamg\'arma')) {
+      return 'Jamg‘arma maqsadlaringiz yaratilgan, ammo hali mablag‘ ajratilmagan (0 soʻm). Maqsadingizga erishish uchun birinchi jamg‘armani qo‘shishdan boshlang!';
+    }
+    return 'Hozircha hisobingizda moliyaviy amallar yo‘q (0 soʻm). Birinchi daromad yoki xarajatlaringizni kiritishingiz bilan, AI yordamchingiz to‘liq tahlillarni shakllantiradi.';
+  }
 
   // 1. "2026-yil sentabr oyida qancha oylik olganman?" / "2026-yil sentabr oyida jami qancha daromad olganman?"
   if (
@@ -635,6 +676,11 @@ Asosiy vazifalar va javob tuzilishi:
 3. FAKTIK ANIKLIK VA VALYUTA:
    - Barcha pul summalarini so'mda (masalan: 6 000 000 soʻm) ko'rsating.
    - Raqamlarni aslo o'ylab topmang, faqat berilgan kontekst faktlaridan oling. Agar ma'lumot yetishmasa yoki baza bo'sh bo'lsa, buni ochiq ayting.
+   - ONBOARDING VA REJALASHTIRISH FAKTLARI:
+     * Foydalanuvchining onboardingda ko‘rsatgan oylik daromadi yoki xarajati — bu REJA VA TAXMIN (PLANNING ESTIMATE).
+     * Foydalanuvchi bu pullarni ishlab topgan yoki sarflagan deb ASLO da'vo qilmang.
+     * Tranzaksiyalar soni 0 ta bo‘lsa, hisob mutlaqo toza (0 soʻm) ekanligini bildiring va foydalanuvchiga tranzaksiyalar qo‘shilgach aniqroq tahlillar taqdim etilishini tushuntiring.
+     * Jamg‘arma maqsadlari yangi boshlangan bo‘lsa, to‘plangan mablag‘ 0 soʻm ekanligini ko‘rsating.
    - Amal muvaffaqiyatsiz bo'lsa yoki bajarilmagan bo'lsa, aslo bajarildi deb da'vo qilmang.
 
 4. TILI: O'zbek tilida tabiiy, to'liq, ravon va grammatik to'g'ri jumlalar bilan yozing. Javobni aslo chala yoki tugallanmagan qoldirmang.`;

@@ -1,18 +1,19 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useState, useActionState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type AuthActionResult } from '@/app/auth/schemas';
 import { loginAction } from '@/app/auth/actions';
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import SpendSenseLogo from '@/components/brand/SpendSenseLogo';
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, isPending] = useActionState<AuthActionResult | null, FormData>(
     loginAction,
     null
@@ -33,17 +34,17 @@ export default function LoginPage() {
   const isLoading = isPending || isSubmitting;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F1F4F2] px-4 py-12 text-[#17211B]">
-      <div className="w-full max-w-sm space-y-6 rounded-2xl border border-[#DCE4DE] bg-white p-7 shadow-fintech-card">
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F6F8] px-4 py-12 text-[#18181B]">
+      <div className="w-full max-w-md space-y-6 rounded-2xl border border-[#E5E7EB] bg-white p-6 sm:p-8 shadow-xs">
         <div className="text-center">
-          <div className="flex justify-center mb-3">
+          <div className="flex justify-center mb-4">
             <SpendSenseLogo variant="icon" size="lg" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-[#17211B]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#18181B]">
             Kirish
-            <span className="sr-only">Welcome back</span>
+            <span className="sr-only">Welcome back Sign In</span>
           </h1>
-          <p className="mt-1 text-xs text-[#68736C]">
+          <p className="mt-2 text-sm text-[#52525B] leading-relaxed">
             Hisobingizga kiring va shaxsiy moliyangizni boshqaring
           </p>
         </div>
@@ -51,10 +52,10 @@ export default function LoginPage() {
         {state?.error && (
           <div
             id="login-error-banner"
-            className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700"
+            className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-[#DC2626]"
           >
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{state.error}</span>
+            <AlertCircle className="h-4 w-4 shrink-0 text-[#DC2626]" />
+            <span className="font-medium">{state.error}</span>
           </div>
         )}
 
@@ -66,12 +67,12 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="email"
-              className="block text-xs font-medium text-[#68736C] mb-1"
+              className="block text-sm font-medium text-[#52525B] mb-1.5"
             >
               Elektron pochta manzili
             </label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#68736C]" />
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
               <input
                 id="email"
                 {...register('email')}
@@ -79,11 +80,11 @@ export default function LoginPage() {
                 autoComplete="email"
                 required
                 placeholder="siz@example.com"
-                className="w-full rounded-lg border border-[#DCE4DE] bg-white py-2 pl-9 pr-3 text-xs text-[#17211B] placeholder-[#9CA3AF] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45]"
+                className="w-full min-h-[48px] rounded-xl border border-[#E5E7EB] bg-white py-2.5 pl-10 pr-3.5 text-sm text-[#18181B] placeholder-[#71717A] focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 transition-all"
               />
             </div>
             {(errors.email?.message || state?.fieldErrors?.email?.[0]) && (
-              <p className="mt-1 text-xs text-red-600">
+              <p className="mt-1.5 text-xs font-medium text-[#DC2626]">
                 {errors.email?.message || state?.fieldErrors?.email?.[0]}
               </p>
             )}
@@ -92,24 +93,36 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-xs font-medium text-[#68736C] mb-1"
+              className="block text-sm font-medium text-[#52525B] mb-1.5"
             >
               Parol
             </label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#68736C]" />
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
               <input
                 id="password"
                 {...register('password')}
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 required
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-[#DCE4DE] bg-white py-2 pl-9 pr-3 text-xs text-[#17211B] placeholder-[#9CA3AF] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45]"
+                className="w-full min-h-[48px] rounded-xl border border-[#E5E7EB] bg-white py-2.5 pl-10 pr-11 text-sm text-[#18181B] placeholder-[#71717A] focus:border-[#10B981] focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 transition-all"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Parolni yashirish' : 'Parolni ko‘rsatish'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#71717A] hover:text-[#18181B] p-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#10B981]/20 transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
             {(errors.password?.message || state?.fieldErrors?.password?.[0]) && (
-              <p className="mt-1 text-xs text-red-600">
+              <p className="mt-1.5 text-xs font-medium text-[#DC2626]">
                 {errors.password?.message || state?.fieldErrors?.password?.[0]}
               </p>
             )}
@@ -119,29 +132,28 @@ export default function LoginPage() {
             id="login-submit-button"
             type="submit"
             disabled={isLoading}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#176B45] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#125536] focus:outline-none focus:ring-2 focus:ring-[#176B45] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full min-h-[48px] items-center justify-center gap-2 rounded-full bg-[#18181B] hover:bg-[#27272A] px-5 py-3 text-sm font-medium text-white transition-all focus:outline-none focus:ring-2 focus:ring-[#10B981] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 shadow-xs active:scale-98"
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Kirilmoqda...</span>
               </>
             ) : (
               <>
                 <span>Kirish</span>
-                <span className="sr-only">Sign In</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-4 w-4" />
               </>
             )}
           </button>
         </form>
 
-        <p className="text-center text-xs text-[#68736C]">
+        <p className="text-center text-sm text-[#52525B] pt-1">
           Hisobingiz yo‘qmi?{' '}
           <Link
             id="register-link"
             href="/register"
-            className="font-semibold text-[#176B45] hover:underline"
+            className="font-medium text-[#059669] hover:text-[#047857] hover:underline transition-colors"
           >
             Ro‘yxatdan o‘tish
           </Link>

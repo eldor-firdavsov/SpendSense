@@ -34,7 +34,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/budgets') ||
     pathname.startsWith('/goals') ||
     pathname.startsWith('/advisor') ||
-    pathname.startsWith('/insights');
+    pathname.startsWith('/insights') ||
+    pathname.startsWith('/onboarding');
   const isAuthRoute = pathname === '/login' || pathname === '/register';
 
   if (pathname === '/') {
@@ -66,7 +67,7 @@ export async function proxy(request: NextRequest) {
 
   if (user) {
     // 3. Attach cryptographically signed tamper-proof token
-    const signedToken = signInternalAuth(user.id, user.email || '');
+    const signedToken = signInternalAuth(user.id, user.email || '', user.user_metadata);
     requestHeaders.set(INTERNAL_AUTH_HEADER, signedToken);
 
     const nextResponse = NextResponse.next({

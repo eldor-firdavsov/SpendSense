@@ -126,16 +126,16 @@ describe('Phase 15 — Functional Frontend and SSR Routing Tests', () => {
       .join('; ');
 
     const pages = [
-      { route: '/dashboard', titleCheck: 'Welcome back' },
-      { route: '/transactions', titleCheck: 'Transactions' },
-      { route: '/categories', titleCheck: 'Category Management' },
-      { route: '/analytics', titleCheck: 'Financial Analytics' },
-      { route: '/imports', titleCheck: 'Import Transactions' },
-      { route: '/budgets', titleCheck: 'Budget Management' },
-      { route: '/goals', titleCheck: 'Savings Goals' },
-      { route: '/advisor', titleCheck: 'SpendSense AI Advisor' },
-      { route: '/insights', titleCheck: 'AI Insights' },
-      { route: '/settings', titleCheck: 'Account Settings' },
+      { route: '/dashboard', titleCheck: 'Moliyaviy holatingiz' },
+      { route: '/transactions', titleCheck: 'Faoliyat' },
+      { route: '/categories', titleCheck: 'Kategoriyalar' },
+      { route: '/analytics', titleCheck: 'Tahlil' },
+      { route: '/imports', titleCheck: 'Ma’lumotlarni import qilish' },
+      { route: '/budgets', titleCheck: 'Budjetlar' },
+      { route: '/goals', titleCheck: 'Jamg‘arma maqsadlari' },
+      { route: '/advisor', titleCheck: 'AI yordamchi' },
+      { route: '/insights', titleCheck: 'Moliyaviy xulosalar' },
+      { route: '/settings', titleCheck: 'Hisob sozlamalari' },
     ];
 
     for (const p of pages) {

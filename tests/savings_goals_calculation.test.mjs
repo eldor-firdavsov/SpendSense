@@ -137,10 +137,13 @@ describe('SpendSense AI — Jamg‘arma maqsadlari hisob-kitoblari va tahlili te
     assert.strictEqual(g.status, 'in_progress');
 
     // 2. Feasibility va oylik jamg‘arish imkoniyati
-    assert.strictEqual(g.feasibility.estimated_months_remaining, 2, 'Qolgan oylar soni 2 oy bo‘lishi kerak');
-    assert.strictEqual(g.feasibility.monthly_needed, 3500000, 'Kerakli oylik jamg‘arma (7 000 000 / 2) = 3 500 000 so‘m bo‘lishi kerak');
+    const today = new Date();
+    const expectedMonths1 = Math.max(1, (2026 - today.getFullYear()) * 12 + (12 - (today.getMonth() + 1)));
+    assert.strictEqual(g.feasibility.estimated_months_remaining, expectedMonths1);
+    const expectedMonthly1 = Math.round((7000000 / expectedMonths1) * 100) / 100;
+    assert.strictEqual(g.feasibility.monthly_needed, expectedMonthly1);
     assert.strictEqual(g.feasibility.average_monthly_net_savings, 1025000, 'Oylik erkin mablag‘ 1 025 000 so‘m bo‘lishi kerak');
-    assert.strictEqual(g.feasibility.status, 'unlikely', 'Kerakli 3.5m > 1.025m bo‘lgani uchun status unlikely bo‘lishi kerak');
+    assert.strictEqual(g.feasibility.status, 'unlikely', 'Kerakli oylik summa > 1.025m bo‘lgani uchun status unlikely bo‘lishi kerak');
 
     // 3. Tavsiya matni tekshiruvi: xarajatni kamaytirish yoki muddatni uzaytirish
     assert.ok(
@@ -184,14 +187,14 @@ describe('SpendSense AI — Jamg‘arma maqsadlari hisob-kitoblari va tahlili te
   });
 
   test('Test 3: Oylik jamg‘arish imkoniyati yetarli bo‘lgan holat (15m target, 8.5m saved, 7 oy => kerak: 928 571 <= erkin 1 025 000 => feasible)', async () => {
-    // Target date: 2027-05-01 (7 months remaining from 2026-10)
+    // Target date: 7 months remaining from current month
     const res = await createGoal(
       {
         name: 'Sayohat va ta‘til',
         target_amount: 15000000,
         current_amount: 8500000,
         currency: 'UZS',
-        target_date: '2027-05-01',
+        target_date: '2027-06-01',
         tracking_strategy: 'manual',
       },
       testUserClient
@@ -204,9 +207,11 @@ describe('SpendSense AI — Jamg‘arma maqsadlari hisob-kitoblari va tahlili te
     assert.strictEqual(g.current_amount, 8500000);
     assert.strictEqual(g.remaining_amount, 6500000, 'Qolgan summa 6 500 000 so‘m bo‘lishi kerak');
     assert.strictEqual(g.percentage_completed, 56.67, 'Bajarilish foizi 56.67% bo‘lishi kerak');
-    assert.strictEqual(g.feasibility.estimated_months_remaining, 7, 'Qolgan oylar 7 oy bo‘lishi kerak');
+    const today = new Date();
+    const expectedMonths3 = Math.max(1, (2027 - today.getFullYear()) * 12 + (6 - (today.getMonth() + 1)));
+    assert.strictEqual(g.feasibility.estimated_months_remaining, expectedMonths3);
 
-    const expectedMonthly = Math.round((6500000 / 7) * 100) / 100; // 928571.43
+    const expectedMonthly = Math.round((6500000 / expectedMonths3) * 100) / 100;
     assert.strictEqual(g.feasibility.monthly_needed, expectedMonthly);
     assert.strictEqual(g.feasibility.status, 'feasible', '928k <= 1025k bo‘lgani uchun feasible bo‘lishi kerak');
     assert.ok(

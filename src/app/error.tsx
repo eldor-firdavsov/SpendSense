@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import SpendSenseLogo from '@/components/brand/SpendSenseLogo';
-import { AlertCircle, RefreshCw, Home, ArrowLeft } from 'lucide-react';
+import { AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export default function ErrorBoundary({
   error,
@@ -29,34 +29,34 @@ export default function ErrorBoundary({
         </div>
 
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-[#17211B]">
+          <h1 className="text-xl font-semibold tracking-tight text-[#17211B]">
             Xatolik yuz berdi
           </h1>
-          <p className="mt-1 text-xs text-[#68736C]">
+          <p className="mt-2 text-base text-[#47544C] leading-relaxed">
             Server bilan bog‘lanishda yoki sahifani yuklashda kutilmagan xatolik yuz berdi.
           </p>
           {error?.digest && (
-            <p className="mt-2 text-[10px] font-mono text-[#8C9890] bg-[#F7F9F7] py-1 px-2 rounded inline-block">
+            <p className="mt-2 text-sm font-mono text-[#5A675F] bg-[#F7F9F7] py-1 px-2.5 rounded-lg border border-[#D5DED7] inline-block">
               Xato kodi: {error.digest}
             </p>
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
             type="button"
             onClick={() => reset()}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#176B45] hover:bg-[#124D35] text-white text-xs font-semibold transition-all shadow-sm active:scale-98"
+            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#176B45] hover:bg-[#124D35] text-white text-sm font-semibold transition-all shadow-fintech-card active:scale-98"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="h-4 w-4" />
             <span>Qayta urinish</span>
           </button>
 
           <Link
             href="/login"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-[#DCE4DE] bg-white hover:bg-[#F7F9F7] text-xs font-medium text-[#17211B] transition-colors"
+            className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-[#D5DED7] bg-white hover:bg-[#F7F9F7] text-sm font-semibold text-[#17211B] transition-colors"
           >
-            <ArrowLeft className="h-3.5 w-3.5 text-[#68736C]" />
+            <ArrowLeft className="h-4 w-4 text-[#47544C]" />
             <span>Kirish sahifasi</span>
           </Link>
         </div>

@@ -119,7 +119,7 @@ export async function registerAction(
     };
   }
 
-  redirect('/dashboard');
+  redirect('/onboarding');
 }
 
 export async function loginAction(
@@ -195,7 +195,28 @@ export async function loginAction(
     };
   }
 
-  redirect('/dashboard');
+  let targetPath = '/dashboard';
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profile && profile.onboarding_completed === false) {
+        targetPath = '/onboarding';
+      }
+    }
+  } catch (profileErr) {
+    console.error('Error verifying onboarding on login:', profileErr);
+  }
+
+  redirect(targetPath);
 }
 
 export async function logoutAction(): Promise<void> {
@@ -223,7 +244,7 @@ export async function updateProfileAction(
     return {
       success: false,
       fieldErrors: validated.error.flatten().fieldErrors,
-      error: 'Please fix the errors below.',
+      error: 'Iltimos, quyidagi xatoliklarni to‘g‘rilang.',
     };
   }
 
@@ -237,7 +258,7 @@ export async function updateProfileAction(
   if (!user) {
     return {
       success: false,
-      error: 'You must be logged in to update your profile.',
+      error: 'Profilni yangilash uchun tizimga kirgan bo‘lishingiz kerak.',
     };
   }
 

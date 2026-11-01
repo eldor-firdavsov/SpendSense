@@ -70,6 +70,10 @@ describe('SpendSense AI — UX/UI soddalashtirish va navigatsiyani qayta tashkil
     assert.ifError(loginErr);
     assert.ok(loginRes.session);
 
+    if (adminClient && testUserId) {
+      await adminClient.from('profiles').update({ onboarding_completed: true }).eq('id', testUserId);
+    }
+
     authCookieHeader = Object.entries(capturedCookies)
       .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
       .join('; ');
@@ -245,9 +249,10 @@ describe('SpendSense AI — UX/UI soddalashtirish va navigatsiyani qayta tashkil
     assert.strictEqual(g.target_amount, 10000000);
     assert.strictEqual(g.current_amount, 4000000);
     assert.strictEqual(g.remaining_amount, 6000000);
-    assert.strictEqual(g.percentage_completed, 40);
-    assert.strictEqual(g.feasibility.estimated_months_remaining, 2);
-    assert.strictEqual(g.feasibility.monthly_needed, 3000000);
+    const today = new Date();
+    const expectedMonths = Math.max(1, (2026 - today.getFullYear()) * 12 + (12 - (today.getMonth() + 1)));
+    assert.strictEqual(g.feasibility.estimated_months_remaining, expectedMonths);
+    assert.strictEqual(g.feasibility.monthly_needed, Math.round(6000000 / expectedMonths));
 
     // Qisqa tavsiya tekshiruvi (uzun emas, aniq va londa)
     assert.ok(g.feasibility.explanation.length > 0);

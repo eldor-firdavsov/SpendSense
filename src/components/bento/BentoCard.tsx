@@ -101,16 +101,16 @@ export function BentoCard({
 }: BentoCardProps) {
   // Resolve variant styles
   const variantStyles: Record<BentoVariant, string> = {
-    default: 'bg-white border-[#DCE4DE] text-[#17211B]',
-    subtle: 'bg-[#F7F9F7] border-[#DCE4DE] text-[#17211B]',
-    primary: 'bg-white border-[#176B45]/30 text-[#17211B] shadow-sm',
-    green: 'bg-[#E5F4EA] border-[#176B45]/20 text-[#17211B]',
-    blue: 'bg-[#EAF0FF] border-[#4B75E8]/20 text-[#17211B]',
-    purple: 'bg-[#F0EBFF] border-[#8664D8]/20 text-[#17211B]',
-    amber: 'bg-[#FFF3D9] border-[#D99A32]/25 text-[#17211B]',
-    danger: 'bg-[#FCEAEA] border-[#C74747]/25 text-[#17211B]',
+    default: 'bg-white border-[#E5E7EB] text-[#18181B]',
+    subtle: 'bg-[#F9FAFB] border-[#E5E7EB] text-[#18181B]',
+    primary: 'bg-white border-[#10B981]/30 text-[#18181B] shadow-xs',
+    green: 'bg-white border-[#E5E7EB] text-[#18181B]',
+    blue: 'bg-white border-[#E5E7EB] text-[#18181B]',
+    purple: 'bg-white border-[#E5E7EB] text-[#18181B]',
+    amber: 'bg-white border-[#E5E7EB] text-[#18181B]',
+    danger: 'bg-[#FEF2F2] border-rose-200 text-[#18181B]',
     interactive:
-      'bg-white border-[#DCE4DE] text-[#17211B] hover:border-[#176B45]/40 hover:shadow-fintech-hover transition-all duration-200 cursor-pointer',
+      'bg-white border-[#E5E7EB] text-[#18181B] hover:border-[#10B981]/40 hover:shadow-xs transition-all duration-200 cursor-pointer',
   };
 
   // Resolve padding

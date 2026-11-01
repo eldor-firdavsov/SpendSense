@@ -23,15 +23,15 @@ export function BentoEmptyState({
   return (
     <BentoCard
       span={span}
-      className={`text-center py-12 px-6 flex flex-col items-center justify-center border-dashed border-[#DCE4DE] bg-[#F7F9F7]/70 ${className}`}
+      className={`text-center py-12 px-6 flex flex-col items-center justify-center border-dashed border-[#D5DED7] bg-[#F7F9F7]/70 ${className}`}
     >
-      <div className="h-12 w-12 rounded-2xl bg-white border border-[#DCE4DE] flex items-center justify-center text-[#68736C] mb-3.5 shadow-fintech-card">
-        {icon || <FolderOpen className="h-6 w-6 text-[#87918A]" />}
+      <div className="h-12 w-12 rounded-2xl bg-white border border-[#D5DED7] flex items-center justify-center text-[#47544C] mb-3.5 shadow-fintech-card">
+        {icon || <FolderOpen className="h-6 w-6 text-[#5A675F]" />}
       </div>
-      <h3 className="text-sm sm:text-base font-bold text-[#17211B] mb-1">
+      <h3 className="text-base sm:text-lg font-semibold text-[#17211B] mb-1.5">
         {title}
       </h3>
-      <p className="text-xs text-[#68736C] max-w-sm mb-5 leading-relaxed">
+      <p className="text-sm text-[#47544C] max-w-sm mb-5 leading-relaxed">
         {description}
       </p>
       {action && <div>{action}</div>}
@@ -61,14 +61,14 @@ export function BentoErrorState({
       className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${className}`}
     >
       <div className="flex items-start gap-3">
-        <div className="p-2 rounded-xl bg-[#FCEAEA] text-[#C74747] shrink-0 border border-[#C74747]/20">
+        <div className="p-2 rounded-xl bg-[#FCEAEA] text-[#C03838] shrink-0 border border-[#C03838]/20">
           <AlertCircle className="h-5 w-5" />
         </div>
         <div>
-          <h4 className="text-xs sm:text-sm font-bold text-[#C74747]">
+          <h4 className="text-sm sm:text-base font-semibold text-[#C03838]">
             {title}
           </h4>
-          <p className="text-xs text-[#68736C] mt-0.5 leading-relaxed">
+          <p className="text-sm sm:text-base text-[#47544C] mt-0.5 leading-relaxed">
             {message}
           </p>
         </div>
@@ -78,9 +78,9 @@ export function BentoErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#C74747]/30 bg-white text-xs font-semibold text-[#C74747] hover:bg-[#FCEAEA] transition-colors shrink-0"
+          className="inline-flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl border border-[#C03838]/30 bg-white text-xs sm:text-sm font-medium text-[#C03838] hover:bg-[#FCEAEA] transition-colors shrink-0"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
+          <RefreshCw className="h-4 w-4" />
           <span>Qayta urinish</span>
         </button>
       )}

@@ -380,17 +380,17 @@ export function normalizeRows(
 
     const parsedDate = parseDate(rawDate, mapping.dateFormat);
     if (!parsedDate) {
-      errors.push(`Invalid or missing date in column "${mapping.dateColumn}"`);
+      errors.push(`"${mapping.dateColumn}" ustunida sana (date) noto‘g‘ri yoki kiritilmagan`);
     }
 
     const description = rawDesc !== undefined ? sanitizeCellValue(rawDesc) : '';
     if (!description) {
-      errors.push(`Description is required in column "${mapping.descriptionColumn}"`);
+      errors.push(`"${mapping.descriptionColumn}" ustunida tavsif (Description) kiritilishi shart`);
     }
 
     const parsedAmountType = parseAmountAndType(rawAmount, rawType, mapping.defaultType);
     if (!parsedAmountType) {
-      errors.push(`Invalid numeric amount in column "${mapping.amountColumn}"`);
+      errors.push(`"${mapping.amountColumn}" ustunida summa (amount) noto‘g‘ri kiritilgan`);
     }
 
     const isValid = errors.length === 0;

@@ -24,16 +24,22 @@ export interface VerifiedInternalUser {
   id: string;
   email: string;
   timestamp: number;
+  metadata?: Record<string, unknown>;
 }
 
 /**
  * Generate a cryptographically signed internal token.
  * Called exclusively by middleware after Supabase validates the session.
  */
-export function signInternalAuth(userId: string, userEmail: string): string {
+export function signInternalAuth(
+  userId: string,
+  userEmail: string,
+  metadata?: Record<string, unknown>
+): string {
   const timestamp = Date.now();
   const nonce = crypto.randomBytes(8).toString('hex');
-  const payload = `${userId}:${userEmail}:${timestamp}:${nonce}`;
+  const metaStr = metadata ? Buffer.from(JSON.stringify(metadata)).toString('base64url') : '';
+  const payload = `${userId}:${userEmail}:${timestamp}:${nonce}:${metaStr}`;
   const hmac = crypto.createHmac('sha256', INTERNAL_SECRET).update(payload).digest('hex');
   return `${payload}:${hmac}`;
 }
@@ -48,11 +54,21 @@ export function verifyInternalAuth(token: string | null | undefined): VerifiedIn
   }
 
   const parts = token.split(':');
-  if (parts.length !== 5) {
+  let id: string;
+  let email: string;
+  let tsStr: string;
+  let nonce: string;
+  let metaStr = '';
+  let receivedHmac: string;
+
+  if (parts.length === 6) {
+    [id, email, tsStr, nonce, metaStr, receivedHmac] = parts;
+  } else if (parts.length === 5) {
+    [id, email, tsStr, nonce, receivedHmac] = parts;
+  } else {
     return null;
   }
 
-  const [id, email, tsStr, nonce, receivedHmac] = parts;
   const timestamp = Number(tsStr);
 
   // 1. Freshness check: token must be younger than 30 seconds
@@ -61,7 +77,10 @@ export function verifyInternalAuth(token: string | null | undefined): VerifiedIn
   }
 
   // 2. Cryptographic signature check
-  const payload = `${id}:${email}:${timestamp}:${nonce}`;
+  const payload =
+    parts.length === 6
+      ? `${id}:${email}:${timestamp}:${nonce}:${metaStr}`
+      : `${id}:${email}:${timestamp}:${nonce}`;
   const expectedHmac = crypto.createHmac('sha256', INTERNAL_SECRET).update(payload).digest('hex');
 
   try {
@@ -78,10 +97,20 @@ export function verifyInternalAuth(token: string | null | undefined): VerifiedIn
     return null;
   }
 
+  let metadata: Record<string, unknown> | undefined;
+  if (metaStr) {
+    try {
+      metadata = JSON.parse(Buffer.from(metaStr, 'base64url').toString('utf8'));
+    } catch {
+      // Ignored if invalid json
+    }
+  }
+
   return {
     id,
     email,
     timestamp,
+    metadata,
   };
 }
 

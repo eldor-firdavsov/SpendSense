@@ -240,7 +240,7 @@ export async function generateAndSaveInsights(
       status: 200,
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error generating insights';
+    const msg = err instanceof Error ? err.message : 'Xulosalarni yaratishda xatolik yuz berdi';
     return { data: null, error: msg, status: 500 };
   }
 }
@@ -280,7 +280,7 @@ export async function listInsights(
 
     return { data: (data || []) as Insight[], error: null, status: 200 };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error fetching insights';
+    const msg = err instanceof Error ? err.message : 'Xulosalarni olishda xatolik yuz berdi';
     return { data: null, error: msg, status: 500 };
   }
 }
@@ -317,12 +317,12 @@ export async function updateInsightStatus(
     }
 
     if (!data) {
-      return { data: null, error: 'Insight not found', status: 404 };
+      return { data: null, error: 'Xulosa topilmadi', status: 404 };
     }
 
     return { data: data as Insight, error: null, status: 200 };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error updating insight';
+    const msg = err instanceof Error ? err.message : 'Xulosa holatini yangilashda xatolik yuz berdi';
     return { data: null, error: msg, status: 500 };
   }
 }

@@ -40,6 +40,31 @@ export const categoryFilterSchema = z.object({
   type: z.enum(['income', 'expense', 'all']).default('all'),
 });
 
+export const SYSTEM_CATEGORY_UZ: Record<string, string> = {
+  'Housing / Rent': 'Uy-joy / Ijara',
+  'Utilities': 'Kommunal to‘lovlar',
+  'Groceries': 'Oziq-ovqat',
+  'Dining Out': 'Kafeler va Restoranlar',
+  'Transportation': 'Transport va Yoqilg‘i',
+  'Healthcare': 'Salomatlik va Tibbiyot',
+  'Entertainment': 'Ko‘ngilochar va Dam olish',
+  'Shopping': 'Xaridlar va Kiyim-kechak',
+  'Education': 'Ta’lim va Kurslar',
+  'Personal Care': 'Shaxsiy parvarish',
+  'Miscellaneous': 'Boshqa xarajatlar',
+  'Salary': 'Ish haqi (Oylik)',
+  'Freelance / Consulting': 'Frilans va Konsalting',
+  'Investments': 'Investitsiyalar',
+  'Gifts & Grants': 'Sovg‘alar va Grantlar',
+  'Other Income': 'Boshqa daromadlar',
+};
+
+export function getCategoryDisplayName(name?: string | null): string {
+  if (!name) return 'Kategoriyasiz';
+  return SYSTEM_CATEGORY_UZ[name] || name;
+}
+
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CategoryFilterInput = z.infer<typeof categoryFilterSchema>;
+

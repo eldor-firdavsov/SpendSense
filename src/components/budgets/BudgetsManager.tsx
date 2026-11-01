@@ -9,14 +9,14 @@ import {
   AlertTriangle,
   CheckCircle2,
   AlertCircle,
-  RefreshCw,
-  Calendar,
 } from 'lucide-react';
 import BudgetModal from './BudgetModal';
 import DeleteBudgetModal from './DeleteBudgetModal';
 import type { BudgetWithProgress } from '@/lib/budgets/schemas';
 import { PageHeader, BentoGrid, BentoCard, BentoMetricCard, BentoEmptyState } from '@/components/bento';
-import { cachedFetch, invalidateCache, CACHE_TTL } from '@/lib/cache/clientCache';
+import { cachedFetch, peekCache, invalidateCache, CACHE_TTL } from '@/lib/cache/clientCache';
+import { getCategoryDisplayName } from '@/lib/categories/schemas';
+import { MetricCardSkeleton, BudgetCardSkeleton } from '@/components/ui/Skeleton';
 
 interface CategoryOption {
   id: string;
@@ -26,10 +26,16 @@ interface CategoryOption {
 }
 
 export default function BudgetsManager() {
-  const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [currency, setCurrency] = useState('UZS');
-  const [loading, setLoading] = useState(true);
+  const currency = 'UZS';
+
+  // Peek cache for 0ms instant load
+  const cachedBudgets = peekCache<{ budgets: BudgetWithProgress[] }>(`/api/budgets?currency=UZS`);
+  const cachedCats = peekCache<{ categories: CategoryOption[] }>('/api/categories?type=expense');
+
+  const [budgets, setBudgets] = useState<BudgetWithProgress[]>(() => cachedBudgets?.budgets || []);
+  const [categories, setCategories] = useState<CategoryOption[]>(() => cachedCats?.categories || []);
+  const [loading, setLoading] = useState(() => !cachedBudgets);
+  const [isRevalidating, setIsRevalidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Modals state
@@ -46,9 +52,20 @@ export default function BudgetsManager() {
 
     async function loadData() {
       try {
+        const targetUrl = `/api/budgets?currency=${currency}`;
+        const cached = peekCache<{ budgets: BudgetWithProgress[] }>(targetUrl);
+
         if (reloadTrigger > 0) {
           invalidateCache('/api/budgets');
+        } else if (cached?.budgets) {
+          setBudgets(cached.budgets);
+          setError(null);
+          setLoading(false);
+          setIsRevalidating(true);
+        } else if (budgets.length === 0) {
+          setLoading(true);
         }
+
         const [catData, budgetData] = await Promise.all([
           cachedFetch<{ categories: CategoryOption[] }>(
             '/api/categories?type=expense',
@@ -56,7 +73,7 @@ export default function BudgetsManager() {
             CACHE_TTL.CATEGORIES
           ),
           cachedFetch<{ budgets: BudgetWithProgress[] }>(
-            `/api/budgets?currency=${currency}`,
+            targetUrl,
             undefined,
             CACHE_TTL.BUDGETS
           ),
@@ -71,11 +88,13 @@ export default function BudgetsManager() {
             setError(null);
           }
           setLoading(false);
+          setIsRevalidating(false);
         }
       } catch (err: unknown) {
         if (!isCancelled) {
           setError(err instanceof Error ? err.message : 'Budjetlarni yuklashda xatolik');
           setLoading(false);
+          setIsRevalidating(false);
         }
       }
     }
@@ -85,7 +104,7 @@ export default function BudgetsManager() {
     return () => {
       isCancelled = true;
     };
-  }, [currency, reloadTrigger]);
+  }, [reloadTrigger]);
 
   const refreshBudgets = () => {
     invalidateCache('/api/budgets');
@@ -93,7 +112,10 @@ export default function BudgetsManager() {
     setReloadTrigger((prev) => prev + 1);
   };
 
-  const formatCurrency = (amount: number, _curr?: string) => {
+  const formatCurrency = (amount: number, currency = 'UZS') => {
+    if (currency === 'USD') {
+      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
     return `${new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(Math.round(amount))} soʻm`;
   };
 
@@ -113,32 +135,22 @@ export default function BudgetsManager() {
             <span>Budjetlar</span>
           </div>
         }
-        subtitle="Har bir kategoriya uchun xarajat limitlarini belgilang va real vaqtda sarf-xarajatlarni kuzatib boring."
-        srOnlyFallback="Budget Management"
+        onRefresh={refreshBudgets}
+        isRefreshing={loading || isRevalidating}
+        refreshId="refresh-budgets-btn"
         actions={
-          <>
-            <select
-              id="budget-currency-filter"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="bg-white border border-[#DCE4DE] text-[#17211B] rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-[#176B45] transition-all shadow-fintech-card"
-            >
-              <option value="UZS">UZS (soʻm)</option>
-            </select>
-
-            <button
-              id="create-budget-btn"
-              type="button"
-              onClick={() => {
-                setBudgetToEdit(null);
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#176B45] text-white font-semibold text-xs hover:bg-[#125536] transition-colors shadow-fintech-card"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Byudjet yaratish</span>
-            </button>
-          </>
+          <button
+            id="create-budget-btn"
+            type="button"
+            onClick={() => {
+              setBudgetToEdit(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-xl bg-[#176B45] text-white font-semibold text-sm hover:bg-[#125536] transition-colors shadow-fintech-card"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Byudjet yaratish</span>
+          </button>
         }
       />
 
@@ -169,22 +181,39 @@ export default function BudgetsManager() {
         </BentoGrid>
       )}
 
-      {/* Error message */}
+      {/* Error message with Retry */}
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-[#C74747] text-xs flex items-start gap-2.5">
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold">Budjetlarni yuklab bo‘lmadi</p>
-            <p className="text-rose-600 mt-0.5">{error}</p>
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-[#C74747] text-sm flex items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-base">Budjetlarni yuklab bo‘lmadi</p>
+              <p className="text-rose-600 text-sm mt-0.5">{error}</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={refreshBudgets}
+            className="px-3.5 py-1.5 rounded-xl bg-white border border-rose-300 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors shrink-0 shadow-2xs"
+          >
+            Qayta urinish
+          </button>
         </div>
       )}
 
-      {/* Loading */}
-      {loading && (
-        <div className="py-12 text-center text-[#68736C] flex flex-col items-center justify-center gap-2">
-          <RefreshCw className="h-5 w-5 animate-spin text-[#176B45]" />
-          <p className="text-xs">Xarajatlar holati hisoblanmoqda...</p>
+      {/* Loading Skeleton */}
+      {loading && budgets.length === 0 && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <BudgetCardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -202,7 +231,7 @@ export default function BudgetsManager() {
                 setBudgetToEdit(null);
                 setIsModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#176B45] text-white font-semibold text-xs hover:bg-[#125536] transition-colors shadow-fintech-card"
+              className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-xl bg-[#176B45] text-white font-semibold text-sm hover:bg-[#125536] transition-colors shadow-fintech-card"
             >
               <Plus className="h-4 w-4" />
               <span>Birinchi budjetingizni yarating</span>
@@ -218,27 +247,31 @@ export default function BudgetsManager() {
             const isOver = b.spent > b.amount;
             const isNear = !isOver && b.percentageUsed >= 80;
 
-            let statusColor = 'bg-[#176B45]/10 text-[#176B45] border-[#176B45]/20';
             let barColor = 'bg-[#176B45]';
 
             if (isOver) {
-              statusColor = 'bg-[#C74747]/10 text-[#C74747] border-[#C74747]/20';
               barColor = 'bg-[#C74747]';
             } else if (isNear) {
-              statusColor = 'bg-amber-500/10 text-amber-700 border-amber-500/20';
               barColor = 'bg-amber-500';
             }
 
             return (
-              <BentoCard key={b.id} className="p-4 sm:p-5 flex flex-col justify-between space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-sm text-[#17211B]">{b.name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {b.category ? (
+              <BentoCard key={b.id} className="p-4 sm:p-5 space-y-3.5">
+                {/* Header: Title, Category & Action Buttons */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-base text-[#17211B] truncate">{b.name}</h3>
+                      {isOver && (
+                        <span className="shrink-0 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 border border-rose-200 text-[#C74747]">
+                          Limit oshdi
+                        </span>
+                      )}
+                    </div>
+                    {b.category && (
+                      <div className="flex items-center gap-1.5 mt-1">
                         <span
-                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium"
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium"
                           style={{
                             backgroundColor: `${b.category.color || '#176B45'}15`,
                             color: b.category.color || '#176B45',
@@ -248,97 +281,26 @@ export default function BudgetsManager() {
                             className="h-1.5 w-1.5 rounded-full"
                             style={{ backgroundColor: b.category.color || '#176B45' }}
                           />
-                          {b.category.name}
+                          {getCategoryDisplayName(b.category.name)}
                         </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F7F9F7] border border-[#DCE4DE] text-[#68736C]">
-                          Umumiy budjet
-                        </span>
-                      )}
-                      <span className="text-[10px] text-[#68736C] uppercase">
-                        {b.period_type === 'monthly' ? 'Oylik' : b.period_type === 'weekly' ? 'Haftalik' : 'Maxsus davr'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusColor}`}
-                  >
-                    {isOver ? (
-                      <>
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>Limit oshdi</span>
-                      </>
-                    ) : isNear ? (
-                      <>
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>Yaqin</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>Reja bo‘yicha</span>
-                      </>
+                      </div>
                     )}
-                  </span>
-                </div>
-
-                {/* Progress Bar & Amounts */}
-                <div className="space-y-1.5">
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-[#68736C]">
-                      Sarflandi:{' '}
-                      <strong className="text-[#17211B] font-mono font-semibold">
-                        {formatCurrency(b.spent, b.currency)}
-                      </strong>
-                    </span>
-                    <span className="text-[#68736C]">
-                      Limit:{' '}
-                      <strong className="text-[#17211B] font-mono font-semibold">
-                        {formatCurrency(b.amount, b.currency)}
-                      </strong>
-                    </span>
                   </div>
 
-                  <div className="h-1.5 w-full bg-[#F7F9F7] rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${barColor} rounded-full transition-all duration-300`}
-                      style={{ width: `${Math.min(100, b.percentageUsed)}%` }}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#68736C] font-mono">
-                      {b.percentageUsed.toFixed(1)}% ishlatildi
-                    </span>
-                    <span className={isOver ? 'text-[#C74747] font-mono font-medium' : 'text-[#68736C] font-mono'}>
-                      {isOver
-                        ? `${formatCurrency(Math.abs(b.remaining), b.currency)} ga oshib ketdi`
-                        : `${formatCurrency(b.remaining, b.currency)} qoldi`}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Dates & Actions */}
-                <div className="pt-3 border-t border-[#DCE4DE] flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-[#68736C] flex items-center gap-1">
-                    <Calendar className="h-3 w-3 text-[#68736C]" />
-                    <span>
-                      {b.start_date} dan {b.end_date} gacha
-                    </span>
-                  </span>
-
-                  <div className="flex items-center gap-1">
+                  {/* Quick Actions (top right) */}
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => {
                         setBudgetToEdit(b);
                         setIsModalOpen(true);
                       }}
-                      className="p-1 rounded-lg text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
+                      className="min-h-[32px] min-w-[32px] flex items-center justify-center p-1.5 rounded-lg text-[#5A675F] hover:text-[#176B45] hover:bg-[#F7F9F7] transition-colors"
                       title="Tahrirlash"
+                      aria-label="Tahrirlash"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
+                      <Edit2 className="h-4 w-4" />
+                      <span className="sr-only">Tahrirlash</span>
                     </button>
                     <button
                       type="button"
@@ -346,11 +308,49 @@ export default function BudgetsManager() {
                         setBudgetToDelete(b);
                         setIsDeleteModalOpen(true);
                       }}
-                      className="p-1 rounded-lg text-[#68736C] hover:text-[#C74747] hover:bg-rose-50 transition-colors"
+                      className="min-h-[32px] min-w-[32px] flex items-center justify-center p-1.5 rounded-lg text-[#5A675F] hover:text-[#C74747] hover:bg-rose-50 transition-colors"
                       title="O‘chirish"
+                      aria-label="O‘chirish"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">O‘chirish</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* Progress & Clean Spending Display */}
+                <div className="space-y-2 pt-0.5">
+                  <div className="flex items-baseline justify-between text-xs sm:text-sm">
+                    <div className="font-mono">
+                      <span className="font-bold text-base sm:text-lg text-[#17211B] tabular-nums">
+                        {formatCurrency(b.spent, b.currency)}
+                      </span>
+                      <span className="text-[#5A675F] text-xs"> / {formatCurrency(b.amount, b.currency)}</span>
+                    </div>
+                    <span
+                      className={
+                        isOver
+                          ? 'text-[#C74747] font-semibold text-xs font-mono tabular-nums'
+                          : 'text-[#176B45] font-semibold text-xs font-mono tabular-nums'
+                      }
+                    >
+                      {isOver
+                        ? `+${formatCurrency(Math.abs(b.remaining), b.currency)} oshdi`
+                        : `${formatCurrency(b.remaining, b.currency)} qoldi`}
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-2 w-full bg-[#F1F4F2] rounded-full overflow-hidden border border-[#D5DED7]/40">
+                    <div
+                      className={`h-full ${barColor} rounded-full transition-all duration-300`}
+                      style={{ width: `${Math.min(100, b.percentageUsed)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-[#5A675F]">
+                    <span className="font-mono tabular-nums">{b.percentageUsed.toFixed(0)}% sarflandi</span>
+                    <span>{b.period_type === 'monthly' ? 'Oylik' : b.period_type === 'weekly' ? 'Haftalik' : 'Maxsus'}</span>
                   </div>
                 </div>
               </BentoCard>

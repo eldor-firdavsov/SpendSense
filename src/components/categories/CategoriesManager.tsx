@@ -7,7 +7,6 @@ import {
   Edit2,
   Trash2,
   Loader2,
-  RefreshCw,
   TrendingDown,
   TrendingUp,
   AlertCircle,
@@ -18,6 +17,7 @@ import { Category, CategoryType } from '@/types/database';
 import CategoryModal from './CategoryModal';
 import DeleteCategoryModal from './DeleteCategoryModal';
 import { PageHeader, BentoGrid, BentoMetricCard } from '@/components/bento';
+import { getCategoryDisplayName } from '@/lib/categories/schemas';
 
 export default function CategoriesManager() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -180,35 +180,30 @@ export default function CategoriesManager() {
 
       {/* Page Header */}
       <PageHeader
-        title="Kategoriyalar"
+        title={
+          <span>
+            Kategoriyalar
+            <span className="sr-only">Category Management</span>
+          </span>
+        }
         subtitle="Shaxsiy moliyangizni tizimli va qulay kategoriyalar yordamida tartibga soling"
-        srOnlyFallback="Category Management"
+        onRefresh={refreshCategories}
+        isRefreshing={isLoading}
+        refreshId="refresh-categories-btn"
         actions={
-          <>
-            <button
-              type="button"
-              id="refresh-categories-btn"
-              onClick={refreshCategories}
-              disabled={isLoading}
-              className="p-2 rounded-xl border border-[#DCE4DE] bg-white text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors disabled:opacity-50 shadow-fintech-card"
-              title="Kategoriyalarni yangilash"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin text-[#176B45]' : ''}`} />
-            </button>
-            <button
-              type="button"
-              id="add-category-btn"
-              onClick={() => {
-                setCategoryToEdit(null);
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#176B45] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#125536] transition-colors shadow-fintech-card"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Maxsus kategoriya qo‘shish</span>
-              <span className="sr-only">Add Custom Category</span>
-            </button>
-          </>
+          <button
+            type="button"
+            id="add-category-btn"
+            onClick={() => {
+              setCategoryToEdit(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 min-h-[40px] rounded-xl bg-[#176B45] px-4 py-2 text-sm font-semibold text-white hover:bg-[#125536] transition-colors shadow-xs"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Maxsus kategoriya qo‘shish</span>
+            <span className="sr-only">Add Custom Category</span>
+          </button>
         }
       />
 
@@ -238,15 +233,15 @@ export default function CategoriesManager() {
       </BentoGrid>
 
       {/* Control Bar: Type Filter */}
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-white border border-[#DCE4DE] self-start text-xs shadow-fintech-card">
+      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white border border-[#D5DED7] self-start text-xs sm:text-sm shadow-xs flex-wrap">
         <button
           type="button"
           id="category-filter-all"
           onClick={() => setTypeFilter('all')}
-          className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+          className={`min-h-[36px] px-3.5 py-1.5 rounded-lg font-medium transition-all ${
             typeFilter === 'all'
-              ? 'bg-[#176B45] text-white shadow-fintech-card font-semibold'
-              : 'text-[#68736C] hover:text-[#17211B]'
+              ? 'bg-[#176B45] text-white shadow-xs font-semibold'
+              : 'text-[#47544C] hover:text-[#17211B] hover:bg-black/5'
           }`}
         >
           Barchasi ({categories.length})
@@ -255,48 +250,48 @@ export default function CategoriesManager() {
           type="button"
           id="category-filter-expense"
           onClick={() => setTypeFilter('expense')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
+          className={`inline-flex items-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg font-medium transition-all ${
             typeFilter === 'expense'
-              ? 'bg-[#FCEAEA] text-[#C74747] font-semibold border border-[#C74747]/20'
-              : 'text-[#68736C] hover:text-[#C74747]'
+              ? 'bg-[#C74747] text-white shadow-xs font-semibold'
+              : 'text-[#47544C] hover:text-[#C74747] hover:bg-black/5'
           }`}
         >
-          <TrendingDown className="h-3.5 w-3.5" />
+          <TrendingDown className="h-4 w-4" />
           <span>Chiqim ({categories.filter((c) => c.type === 'expense').length})</span>
         </button>
         <button
           type="button"
           id="category-filter-income"
           onClick={() => setTypeFilter('income')}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all ${
+          className={`inline-flex items-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg font-medium transition-all ${
             typeFilter === 'income'
-              ? 'bg-[#E5F4EA] text-[#176B45] font-semibold border border-[#176B45]/20'
-              : 'text-[#68736C] hover:text-[#176B45]'
+              ? 'bg-[#176B45] text-white shadow-xs font-semibold'
+              : 'text-[#47544C] hover:text-[#176B45] hover:bg-black/5'
           }`}
         >
-          <TrendingUp className="h-3.5 w-3.5" />
+          <TrendingUp className="h-4 w-4" />
           <span>Kirim ({categories.filter((c) => c.type === 'income').length})</span>
         </button>
       </div>
 
       {isLoading ? (
-        <div id="categories-loading" className="py-16 flex flex-col items-center justify-center text-[#68736C]">
+        <div id="categories-loading" className="py-16 flex flex-col items-center justify-center text-[#5A675F]">
           <Loader2 className="h-6 w-6 animate-spin text-[#176B45] mb-2" />
-          <span className="text-xs">Kategoriyalar yuklanmoqda...</span>
+          <span className="text-sm font-medium">Kategoriyalar yuklanmoqda...</span>
         </div>
       ) : (
         <div className="space-y-6">
           {/* Custom Categories Section */}
-          <div className="rounded-2xl border border-[#DCE4DE] bg-white p-5 space-y-4 shadow-fintech-card">
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE4DE]">
+          <div className="rounded-2xl border border-[#D5DED7] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#D5DED7]">
               <div>
-                <h2 className="text-sm font-bold text-[#17211B] flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-[#17211B] flex items-center gap-2">
                   <span>Mening maxsus kategoriyalarim</span>
-                  <span className="text-xs font-normal text-[#68736C]">
+                  <span className="text-xs sm:text-sm font-normal text-[#5A675F]">
                     ({customCategories.length})
                   </span>
                 </h2>
-                <p className="text-xs text-[#68736C] mt-0.5">
+                <p className="text-sm sm:text-base text-[#47544C] mt-0.5">
                   O‘zingiz yaratgan shaxsiy chiqim va kirim toifalari
                 </p>
               </div>
@@ -305,11 +300,11 @@ export default function CategoriesManager() {
             {customCategories.length === 0 ? (
               <div
                 id="custom-categories-empty"
-                className="rounded-xl border border-dashed border-[#DCE4DE] bg-[#F7F9F7] p-8 text-center"
+                className="rounded-xl border border-dashed border-[#D5DED7] bg-[#F7F9F7] p-8 text-center"
               >
-                <Tag className="h-6 w-6 text-[#68736C] mx-auto mb-2" />
-                <p className="text-xs font-semibold text-[#17211B]">Hozircha maxsus kategoriyalar yo‘q</p>
-                <p className="text-[11px] text-[#68736C] mt-0.5 max-w-sm mx-auto">
+                <Tag className="h-8 w-8 text-[#5A675F] mx-auto mb-2.5 opacity-60" />
+                <p className="text-base font-semibold text-[#17211B]">Hozircha maxsus kategoriyalar yo‘q</p>
+                <p className="text-sm sm:text-base text-[#47544C] mt-1 max-w-sm mx-auto leading-relaxed">
                   Daromad va xarajatlaringizni o‘z ehtiyojingizga moslashtirish uchun maxsus kategoriyalar yarating.
                 </p>
                 <button
@@ -318,36 +313,36 @@ export default function CategoriesManager() {
                     setCategoryToEdit(null);
                     setIsModalOpen(true);
                   }}
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#176B45] hover:underline"
+                  className="mt-3.5 inline-flex items-center gap-1.5 min-h-[40px] px-4 py-2 rounded-xl bg-[#176B45] text-white text-xs sm:text-sm font-semibold hover:bg-[#125536] transition-colors shadow-xs"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                   <span>Kategoriya yaratish</span>
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3" id="custom-categories-list">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5" id="custom-categories-list">
                 {customCategories.map((cat) => (
                   <div
                     key={cat.id}
                     id={`category-item-${cat.id}`}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-[#DCE4DE] bg-white hover:border-[#176B45]/40 transition-all"
+                    className="flex items-center justify-between p-4 rounded-xl border border-[#D5DED7] bg-white hover:border-[#176B45]/40 transition-all shadow-xs"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3.5 min-w-0">
                       <div
-                        className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border"
+                        className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border"
                         style={{
                           backgroundColor: cat.color ? `${cat.color}15` : '#176B4515',
                           borderColor: cat.color ? `${cat.color}30` : '#176B4530',
                           color: cat.color || '#176B45',
                         }}
                       >
-                        <Tag className="h-4 w-4" />
+                        <Tag className="h-4.5 w-4.5" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-[#17211B] truncate">{cat.name}</span>
+                          <span className="text-sm sm:text-base font-semibold text-[#17211B] truncate">{cat.name}</span>
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            className={`px-2 py-0.5 rounded-md text-xs font-semibold ${
                               cat.type === 'expense'
                                 ? 'bg-red-50 text-[#C74747]'
                                 : 'bg-[#DDF3E5] text-[#176B45]'
@@ -357,12 +352,12 @@ export default function CategoriesManager() {
                           </span>
                         </div>
                         {cat.description && (
-                          <p className="text-[11px] text-[#68736C] truncate mt-0.5">{cat.description}</p>
+                          <p className="text-sm text-[#47544C] truncate mt-0.5">{cat.description}</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
                       <button
                         type="button"
                         id={`edit-category-btn-${cat.id}`}
@@ -370,19 +365,19 @@ export default function CategoriesManager() {
                           setCategoryToEdit(cat);
                           setIsModalOpen(true);
                         }}
-                        className="p-1.5 rounded-lg text-[#68736C] hover:text-[#176B45] hover:bg-[#F7F9F7] transition-colors"
+                        className="min-h-[36px] min-w-[36px] p-2 rounded-xl text-[#47544C] hover:text-[#176B45] hover:bg-[#F7F9F7] transition-colors flex items-center justify-center"
                         title="Tahrirlash"
                       >
-                        <Edit2 className="h-3.5 w-3.5" />
+                        <Edit2 className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
                         id={`delete-category-btn-${cat.id}`}
                         onClick={() => setCategoryToDelete(cat)}
-                        className="p-1.5 rounded-lg text-[#68736C] hover:text-[#C74747] hover:bg-red-50 transition-colors"
+                        className="min-h-[36px] min-w-[36px] p-2 rounded-xl text-[#47544C] hover:text-[#C74747] hover:bg-red-50 transition-colors flex items-center justify-center"
                         title="O‘chirish"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -392,49 +387,49 @@ export default function CategoriesManager() {
           </div>
 
           {/* System Categories Section */}
-          <div className="rounded-2xl border border-[#DCE4DE] bg-white p-5 space-y-4 shadow-fintech-card">
-            <div className="flex items-center justify-between pb-3 border-b border-[#DCE4DE]">
+          <div className="rounded-2xl border border-[#D5DED7] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
+            <div className="flex items-center justify-between pb-3.5 border-b border-[#D5DED7]">
               <div>
-                <h2 className="text-sm font-bold text-[#17211B] flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-[#17211B] flex items-center gap-2">
                   <span>Tizim kategoriyalari</span>
-                  <span className="text-xs font-normal text-[#68736C]">
+                  <span className="text-xs sm:text-sm font-normal text-[#5A675F]">
                     ({systemCategories.length})
                   </span>
                 </h2>
-                <p className="text-xs text-[#68736C] mt-0.5">
+                <p className="text-sm sm:text-base text-[#47544C] mt-0.5">
                   Standart o‘rnatilgan chiqim va kirim toifalari
                 </p>
               </div>
-              <span className="text-[11px] text-[#68736C] flex items-center gap-1 bg-[#F7F9F7] px-2 py-1 rounded-lg border border-[#DCE4DE]">
-                <Lock className="h-3 w-3" />
+              <span className="text-xs text-[#5A675F] flex items-center gap-1.5 bg-[#F7F9F7] px-2.5 py-1 rounded-lg border border-[#D5DED7] font-medium">
+                <Lock className="h-3.5 w-3.5" />
                 Standart
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5" id="system-categories-list">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3" id="system-categories-list">
               {systemCategories.map((cat) => (
                 <div
                   key={cat.id}
                   id={`system-category-${cat.id}`}
-                  className="flex items-center justify-between p-2.5 rounded-xl border border-[#DCE4DE] bg-[#F7F9F7]"
+                  className="flex items-center justify-between p-3 rounded-xl border border-[#D5DED7] bg-[#F7F9F7]"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div
-                      className="h-6 w-6 rounded-md flex items-center justify-center shrink-0 border text-[11px]"
+                      className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border text-xs"
                       style={{
                         backgroundColor: cat.color ? `${cat.color}15` : '#176B4515',
                         borderColor: cat.color ? `${cat.color}20` : '#176B4520',
                         color: cat.color || '#176B45',
                       }}
                     >
-                      <Tag className="h-3 w-3" />
+                      <Tag className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-medium text-[#17211B] truncate block">{cat.name}</span>
+                      <span className="text-xs sm:text-sm font-medium text-[#17211B] truncate block">{getCategoryDisplayName(cat.name)}</span>
                     </div>
                   </div>
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                    className={`px-2 py-0.5 rounded-md text-xs font-semibold ${
                       cat.type === 'expense'
                         ? 'bg-red-50 text-[#C74747]'
                         : 'bg-[#DDF3E5] text-[#176B45]'

@@ -31,6 +31,13 @@ export interface Profile {
   email: string | null;
   role: string;
   is_active: boolean;
+  declared_monthly_income?: number;
+  declared_monthly_expenses?: number;
+  target_expense_reduction_percent?: number;
+  target_monthly_expenses?: number;
+  onboarding_completed?: boolean;
+  onboarding_step?: number;
+  onboarding_data?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

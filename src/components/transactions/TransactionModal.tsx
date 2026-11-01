@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Loader2, Coins, Calendar, Tag, Building2, FileText } from 'lucide-react';
 import { Category, TransactionWithCategory, TransactionType } from '@/types/database';
+import { getCategoryDisplayName } from '@/lib/categories/schemas';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -35,7 +36,7 @@ function TransactionModalForm({
   const [amount, setAmount] = useState(
     transactionToEdit?.amount !== undefined ? String(transactionToEdit.amount) : ''
   );
-  const [currency, setCurrency] = useState(transactionToEdit?.currency || 'UZS');
+  const currency = transactionToEdit?.currency || 'UZS';
   const [type, setType] = useState<TransactionType>(transactionToEdit?.type || 'expense');
   const [transactionDate, setTransactionDate] = useState(
     transactionToEdit?.transaction_date || new Date().toISOString().split('T')[0]
@@ -92,14 +93,14 @@ function TransactionModalForm({
   };
 
   return (
-    <div className="w-full max-w-lg rounded-2xl border border-[#DCE4DE] bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150 my-8">
+    <div className="w-full max-w-lg rounded-2xl border border-[#D5DED7] bg-white p-6 sm:p-7 shadow-xl animate-in fade-in zoom-in-95 duration-150 my-8">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#DCE4DE]">
+      <div className="flex items-center justify-between pb-4 border-b border-[#D5DED7]">
         <div>
-          <h2 id="modal-title" className="text-lg font-bold text-[#17211B] tracking-tight">
+          <h2 id="modal-title" className="text-xl font-semibold text-[#17211B] tracking-tight">
             {isEditing ? 'Tranzaksiyani tahrirlash' : 'Tranzaksiya qo‘shish'}
           </h2>
-          <p className="text-xs text-[#68736C] mt-0.5">
+          <p className="text-sm text-[#47544C] mt-1">
             {isEditing
               ? 'Mavjud tranzaksiya tafsilotlarini o‘zgartiring'
               : 'Yangi moliyaviy yozuvni tezda kiriting'}
@@ -109,7 +110,7 @@ function TransactionModalForm({
           type="button"
           id="close-modal-btn"
           onClick={onClose}
-          className="rounded-xl p-1.5 text-[#68736C] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors"
+          className="rounded-xl p-2 text-[#5A675F] hover:text-[#17211B] hover:bg-[#F7F9F7] transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
         >
           <X className="h-5 w-5" />
           <span className="sr-only">Yopish</span>
@@ -120,13 +121,13 @@ function TransactionModalForm({
       {formError && (
         <div
           id="modal-error-banner"
-          className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-[#C74747] flex items-start justify-between"
+          className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm font-medium text-[#C74747] flex items-start justify-between"
         >
           <span>{formError}</span>
           <button
             type="button"
             onClick={() => setFormError(null)}
-            className="text-[#C74747] underline text-[11px] ml-2"
+            className="text-[#C74747] underline text-xs ml-2"
           >
             Yopish
           </button>
@@ -134,13 +135,13 @@ function TransactionModalForm({
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+      <form onSubmit={handleSubmit} className="mt-5 space-y-4">
         {/* Type Selector (Chiqim / Kirim) */}
         <div>
-          <label className="block text-xs font-medium text-[#68736C] mb-1.5">
+          <label className="block text-sm font-medium text-[#47544C] mb-1.5">
             Tranzaksiya turi
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               id="type-expense-btn"
@@ -148,10 +149,10 @@ function TransactionModalForm({
                 setType('expense');
                 setCategoryId('');
               }}
-              className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+              className={`min-h-[44px] py-2 px-3 text-sm font-semibold rounded-xl border transition-all ${
                 type === 'expense'
                   ? 'border-[#C74747] bg-rose-50 text-[#C74747]'
-                  : 'border-[#DCE4DE] bg-white text-[#68736C] hover:bg-[#F7F9F7]'
+                  : 'border-[#D5DED7] bg-white text-[#47544C] hover:bg-[#F7F9F7]'
               }`}
             >
               Chiqim (Xarajat)
@@ -163,10 +164,10 @@ function TransactionModalForm({
                 setType('income');
                 setCategoryId('');
               }}
-              className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+              className={`min-h-[44px] py-2 px-3 text-sm font-semibold rounded-xl border transition-all ${
                 type === 'income'
                   ? 'border-[#176B45] bg-[#DDF3E5] text-[#176B45]'
-                  : 'border-[#DCE4DE] bg-white text-[#68736C] hover:bg-[#F7F9F7]'
+                  : 'border-[#D5DED7] bg-white text-[#47544C] hover:bg-[#F7F9F7]'
               }`}
             >
               Kirim (Daromad)
@@ -174,64 +175,48 @@ function TransactionModalForm({
           </div>
         </div>
 
-        {/* Amount & Currency */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <label htmlFor="amount-input" className="block text-xs font-medium text-[#68736C] mb-1">
-              Summa <span className="text-[#C74747]">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#68736C]">
-                <Coins className="h-4 w-4" />
-              </span>
-              <input
-                id="amount-input"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                placeholder="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full rounded-xl border border-[#DCE4DE] bg-white pl-9 pr-3 py-2 text-sm text-[#17211B] font-semibold focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="currency-select" className="block text-xs font-medium text-[#68736C] mb-1">
-              Valyuta
-            </label>
-            <select
-              id="currency-select"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white px-3 py-2 text-sm text-[#17211B] font-medium focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
-            >
-              <option value="UZS">UZS (so‘m)</option>
-            </select>
+        {/* Amount */}
+        <div>
+          <label htmlFor="amount-input" className="block text-sm font-medium text-[#47544C] mb-1.5">
+            Summa (so‘m) <span className="text-[#C74747]">*</span>
+          </label>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5A675F]">
+              <Coins className="h-4 w-4" />
+            </span>
+            <input
+              id="amount-input"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white pl-10 pr-3.5 py-2.5 text-base text-[#17211B] font-semibold font-mono tabular-nums focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
+            />
           </div>
         </div>
 
         {/* Category */}
         <div>
-          <label htmlFor="category-select" className="block text-xs font-medium text-[#68736C] mb-1">
+          <label htmlFor="category-select" className="block text-sm font-medium text-[#47544C] mb-1.5">
             Kategoriya
           </label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#68736C]">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5A675F]">
               <Tag className="h-4 w-4" />
             </span>
             <select
               id="category-select"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white pl-9 pr-3 py-2 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+              className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white pl-10 pr-3.5 py-2.5 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             >
               <option value="">Kategoriyasiz</option>
               {compatibleCategories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {getCategoryDisplayName(c.name)}
                 </option>
               ))}
             </select>
@@ -240,11 +225,11 @@ function TransactionModalForm({
 
         {/* Date */}
         <div>
-          <label htmlFor="date-input" className="block text-xs font-medium text-[#68736C] mb-1">
+          <label htmlFor="date-input" className="block text-sm font-medium text-[#47544C] mb-1.5">
             Sana <span className="text-[#C74747]">*</span>
           </label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#68736C]">
+            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5A675F]">
               <Calendar className="h-4 w-4" />
             </span>
             <input
@@ -253,14 +238,14 @@ function TransactionModalForm({
               required
               value={transactionDate}
               onChange={(e) => setTransactionDate(e.target.value)}
-              className="w-full rounded-xl border border-[#DCE4DE] bg-white pl-9 pr-3 py-2 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+              className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white pl-10 pr-3.5 py-2.5 text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
             />
           </div>
         </div>
 
         {/* Description / Note */}
         <div>
-          <label htmlFor="description-input" className="block text-xs font-medium text-[#68736C] mb-1">
+          <label htmlFor="description-input" className="block text-sm font-medium text-[#47544C] mb-1.5">
             Tavsif (ixtiyoriy)
           </label>
           <input
@@ -269,18 +254,18 @@ function TransactionModalForm({
             placeholder="Masalan: Tushlik, Oylik maosh..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-xl border border-[#DCE4DE] bg-white px-3 py-2 text-sm text-[#17211B] placeholder-[#68736C] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+            className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white px-3.5 py-2.5 text-sm text-[#17211B] placeholder-[#5A675F] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
           />
         </div>
 
         {/* Merchant & Notes */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label htmlFor="merchant-input" className="block text-xs font-medium text-[#68736C] mb-1">
+            <label htmlFor="merchant-input" className="block text-sm font-medium text-[#47544C] mb-1.5">
               Savdo nuqtasi
             </label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#68736C]">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5A675F]">
                 <Building2 className="h-4 w-4" />
               </span>
               <input
@@ -289,17 +274,17 @@ function TransactionModalForm({
                 placeholder="Masalan: Korzinka"
                 value={merchant}
                 onChange={(e) => setMerchant(e.target.value)}
-                className="w-full rounded-xl border border-[#DCE4DE] bg-white pl-9 pr-3 py-2 text-sm text-[#17211B] placeholder-[#68736C] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+                className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white pl-10 pr-3.5 py-2.5 text-sm text-[#17211B] placeholder-[#5A675F] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="notes-input" className="block text-xs font-medium text-[#68736C] mb-1">
+            <label htmlFor="notes-input" className="block text-sm font-medium text-[#47544C] mb-1.5">
               Qo‘shimcha izoh
             </label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#68736C]">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#5A675F]">
                 <FileText className="h-4 w-4" />
               </span>
               <input
@@ -308,20 +293,20 @@ function TransactionModalForm({
                 placeholder="Qayd..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full rounded-xl border border-[#DCE4DE] bg-white pl-9 pr-3 py-2 text-sm text-[#17211B] placeholder-[#68736C] focus:border-[#176B45] focus:outline-none focus:ring-1 focus:ring-[#176B45] transition-all"
+                className="w-full min-h-[48px] rounded-xl border border-[#D5DED7] bg-white pl-10 pr-3.5 py-2.5 text-sm text-[#17211B] placeholder-[#5A675F] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
               />
             </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="pt-4 border-t border-[#DCE4DE] flex items-center justify-end gap-3">
+        <div className="pt-4 border-t border-[#D5DED7] flex items-center justify-end gap-3">
           <button
             type="button"
             id="cancel-modal-btn"
             onClick={onClose}
             disabled={isSaving}
-            className="rounded-xl border border-[#DCE4DE] bg-white px-4 py-2 text-xs font-semibold text-[#17211B] hover:bg-[#F7F9F7] transition-colors disabled:opacity-50"
+            className="rounded-xl border border-[#D5DED7] bg-white px-4 py-2.5 min-h-[44px] text-sm font-semibold text-[#17211B] hover:bg-[#F7F9F7] transition-colors disabled:opacity-50"
           >
             Bekor qilish
           </button>
@@ -329,9 +314,9 @@ function TransactionModalForm({
             type="submit"
             id="save-transaction-btn"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#176B45] px-5 py-2 text-xs font-semibold text-white hover:bg-[#125536] transition-colors disabled:opacity-50 shadow-fintech-card"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#176B45] px-5 py-2.5 min-h-[44px] text-sm font-semibold text-white hover:bg-[#125536] transition-colors disabled:opacity-50 shadow-fintech-card"
           >
-            {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
             <span>{isSaving ? 'Saqlanmoqda...' : 'Saqlash'}</span>
           </button>
         </div>

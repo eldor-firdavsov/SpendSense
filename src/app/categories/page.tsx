@@ -20,9 +20,14 @@ export default async function CategoriesPage() {
     redirect('/login');
   }
 
+  const metaName = `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim() || user.user_metadata?.full_name || '';
+  const emailPrefix = (user.email || '').split('@')[0] || '';
+  const cleanEmailName = emailPrefix.replace(/[0-9_.-]/g, ' ').trim();
+  const displayName = metaName || (cleanEmailName ? cleanEmailName.charAt(0).toUpperCase() + cleanEmailName.slice(1).toLowerCase() : 'Foydalanuvchi');
+
   return (
-    <div className="min-h-screen bg-[#F1F4F2] text-[#17211B] pb-24 md:pb-14">
-      <AppHeader userEmail={user.email} />
+    <div className="min-h-screen bg-[#F1F4F2] text-[#17211B] pb-36 md:pb-16">
+      <AppHeader userEmail={user.email} userName={displayName} />
 
       <PageContainer>
         <CategoriesManager />

@@ -32,21 +32,21 @@ export function BentoMetricCard({
   onClick,
 }: BentoMetricCardProps) {
   const accentIconStyles = {
-    green: 'bg-[#E5F4EA] text-[#218653]',
-    red: 'bg-[#FCEAEA] text-[#C74747]',
-    blue: 'bg-[#EAF0FF] text-[#4B75E8]',
-    purple: 'bg-[#F0EBFF] text-[#8664D8]',
-    amber: 'bg-[#FFF3D9] text-[#D99A32]',
-    neutral: 'bg-[#F7F9F7] text-[#17211B]',
+    green: 'bg-[#ECFDF5] text-[#059669]',
+    red: 'bg-[#FEF2F2] text-[#DC2626]',
+    blue: 'bg-[#EFF6FF] text-[#2563EB]',
+    purple: 'bg-[#F5F3FF] text-[#7C3AED]',
+    amber: 'bg-[#FFFBEB] text-[#D97706]',
+    neutral: 'bg-[#F5F6F8] text-[#18181B]',
   }[accent];
 
   const valueColorStyles = {
-    green: 'text-[#218653]',
-    red: 'text-[#C74747]',
-    blue: 'text-[#4B75E8]',
-    purple: 'text-[#8664D8]',
-    amber: 'text-[#D99A32]',
-    neutral: 'text-[#17211B]',
+    green: 'text-[#059669]',
+    red: 'text-[#DC2626]',
+    blue: 'text-[#2563EB]',
+    purple: 'text-[#7C3AED]',
+    amber: 'text-[#D97706]',
+    neutral: 'text-[#18181B]',
   }[accent];
 
   return (
@@ -57,11 +57,11 @@ export function BentoMetricCard({
       className={`relative overflow-hidden ${className}`}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
-        <span className="text-xs font-semibold text-[#68736C] uppercase tracking-wider">
+        <span className="text-xs font-medium text-[#71717A] tracking-wide">
           {title}
         </span>
         {icon && (
-          <div className={`p-2 rounded-xl shrink-0 ${accentIconStyles}`}>
+          <div className={`p-1.5 rounded-full shrink-0 ${accentIconStyles}`}>
             {icon}
           </div>
         )}
@@ -69,36 +69,36 @@ export function BentoMetricCard({
 
       <div className="flex items-baseline gap-1.5 flex-wrap">
         <span
-          className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight tabular-nums ${valueColorStyles}`}
+          className={`text-xl sm:text-2xl lg:text-3xl font-semibold font-mono tracking-tight tabular-nums break-words ${valueColorStyles}`}
         >
           {value}
         </span>
         {currency && (
-          <span className="text-xs font-semibold text-[#68736C]">
+          <span className="text-xs font-normal text-[#71717A]">
             {currency}
           </span>
         )}
       </div>
 
       {(subtext || delta) && (
-        <div className="mt-2.5 flex items-center justify-between gap-2 text-[11px] sm:text-xs text-[#68736C] pt-2 border-t border-[#DCE4DE]/60">
+        <div className="mt-2.5 flex items-center justify-between gap-2 text-xs text-[#71717A] pt-2 border-t border-[#E5E7EB]">
           {subtext && <div className="truncate">{subtext}</div>}
 
           {delta && (
             <div
-              className={`inline-flex items-center gap-1 font-semibold tabular-nums shrink-0 ${
+              className={`inline-flex items-center gap-1 font-medium tabular-nums shrink-0 ${
                 delta.trend === 'up'
-                  ? 'text-[#218653]'
+                  ? 'text-[#059669]'
                   : delta.trend === 'down'
-                  ? 'text-[#C74747]'
-                  : 'text-[#68736C]'
+                  ? 'text-[#DC2626]'
+                  : 'text-[#71717A]'
               }`}
             >
               {delta.trend === 'up' && <ArrowUpRight className="h-3.5 w-3.5" />}
               {delta.trend === 'down' && <ArrowDownRight className="h-3.5 w-3.5" />}
               {delta.trend === 'neutral' && <Minus className="h-3 w-3" />}
               <span>{delta.value}</span>
-              {delta.label && <span className="text-[10px] text-[#87918A] font-normal">({delta.label})</span>}
+              {delta.label && <span className="text-[10px] text-[#A1A1AA] font-normal">({delta.label})</span>}
             </div>
           )}
         </div>

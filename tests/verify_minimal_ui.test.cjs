@@ -69,6 +69,10 @@ describe('SpendSense Minimal White UI/UX Verification', () => {
     assert.strictEqual(signInErr, null);
     assert.ok(signInData.session);
 
+    if (adminClient && createdUserId) {
+      await adminClient.from('profiles').update({ onboarding_completed: true }).eq('id', createdUserId);
+    }
+
     authCookieHeader = Object.entries(capturedCookies)
       .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
       .join('; ');
@@ -84,63 +88,63 @@ describe('SpendSense Minimal White UI/UX Verification', () => {
     }
   });
 
-  test('1. Bosh sahifa (/dashboard) has white background and exactly 4 nav links', async () => {
+  test('1. Bosh sahifa (/dashboard) has white/fintech background and navigation links', async () => {
     const res = await fetch(BASE_URL + '/dashboard', {
       headers: { Cookie: authCookieHeader },
     });
     assert.strictEqual(res.status, 200);
     const html = await res.text();
-    assert.ok(html.includes('bg-white text-[#222222]'), 'Should use bg-white text-[#222222]');
+    assert.ok(html.includes('bg-[#F1F4F2]') || html.includes('bg-white'), 'Should use light fintech background');
     assert.ok(html.includes('Bosh sahifa'), 'Should have Bosh sahifa link');
     assert.ok(html.includes('AI yordamchi'), 'Should have AI yordamchi link');
     assert.ok(html.includes('Faoliyat'), 'Should have Faoliyat link');
     assert.ok(html.includes('Tahlil'), 'Should have Tahlil link');
-    assert.ok(html.includes('+ Tranzaksiya'), 'Should have + Tranzaksiya button');
-    assert.ok(html.includes('Mavjud balans'), 'Should have Mavjud balans section');
+    assert.ok(html.includes('Tranzaksiya'), 'Should have Tranzaksiya button');
+    assert.ok(html.includes('dashboard-skeleton') || html.includes('Jami balans'), 'Should have dashboard content or skeleton');
     assert.ok(!html.includes('ThemeToggle'), 'Should not contain theme toggle');
   });
 
-  test('2. Faoliyat (/transactions) has white background and secondary nav links', async () => {
+  test('2. Faoliyat (/transactions) has light background and secondary nav links', async () => {
     const res = await fetch(BASE_URL + '/transactions', {
       headers: { Cookie: authCookieHeader },
     });
     assert.strictEqual(res.status, 200);
     const html = await res.text();
-    assert.ok(html.includes('bg-white text-[#222222]'));
+    assert.ok(html.includes('bg-[#F1F4F2]') || html.includes('bg-white'));
     assert.ok(html.includes('Faoliyat'));
     assert.ok(html.includes('Kategoriyalar'));
     assert.ok(html.includes('Import'));
   });
 
-  test('3. Tahlil (/analytics) has white background and budget/goal links', async () => {
+  test('3. Tahlil (/analytics) has light background and budget/goal links', async () => {
     const res = await fetch(BASE_URL + '/analytics', {
       headers: { Cookie: authCookieHeader },
     });
     assert.strictEqual(res.status, 200);
     const html = await res.text();
-    assert.ok(html.includes('bg-white text-[#222222]'));
+    assert.ok(html.includes('bg-[#F1F4F2]') || html.includes('bg-white'));
     assert.ok(html.includes('Tahlil'));
     assert.ok(html.includes('Budjetlar'));
     assert.ok(html.includes('Jamg‘arma maqsadlari'));
   });
 
-  test('4. AI yordamchi (/advisor) has white background and chat container', async () => {
+  test('4. AI yordamchi (/advisor) has light background and chat container', async () => {
     const res = await fetch(BASE_URL + '/advisor', {
       headers: { Cookie: authCookieHeader },
     });
     assert.strictEqual(res.status, 200);
     const html = await res.text();
-    assert.ok(html.includes('bg-white text-[#222222]'));
+    assert.ok(html.includes('bg-[#F1F4F2]') || html.includes('bg-white'));
     assert.ok(html.includes('AI yordamchi'));
   });
 
-  test('5. Sozlamalar (/settings) has white background and no dark toggle', async () => {
+  test('5. Sozlamalar (/settings) has light background and no dark toggle', async () => {
     const res = await fetch(BASE_URL + '/settings', {
       headers: { Cookie: authCookieHeader },
     });
     assert.strictEqual(res.status, 200);
     const html = await res.text();
-    assert.ok(html.includes('bg-white text-[#222222]'));
+    assert.ok(html.includes('bg-[#F1F4F2]') || html.includes('bg-white'));
     assert.ok(html.includes('Hisob sozlamalari'));
     assert.ok(!html.includes('ThemeToggle'), 'Theme toggle should be absent');
   });

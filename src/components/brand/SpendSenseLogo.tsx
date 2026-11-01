@@ -30,7 +30,7 @@ export default function SpendSenseLogo({
       <div className={`inline-flex items-center justify-center ${className}`}>
         <Image
           src="/spendsense-logo-transparent.png"
-          alt="SpendSense AI"
+          alt="SpendSense"
           width={180}
           height={180}
           priority={priority}
@@ -61,7 +61,7 @@ export default function SpendSenseLogo({
     >
       <Image
         src="/spendsense-icon-transparent.png"
-        alt="SpendSense AI"
+        alt="SpendSense"
         width={imageSizes[size]}
         height={imageSizes[size]}
         priority={priority}
