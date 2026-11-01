@@ -46,7 +46,7 @@ const NAV_ITEMS = [
       path.startsWith('/budgets') ||
       path.startsWith('/goals') ||
       path.startsWith('/insights'),
-    apiToWarm: '/api/analytics?startDate=2026-09-01&endDate=2026-10-31&currency=UZS&interval=month',
+    apiToWarm: '/api/timeline/available-months',
     id: 'mobile-nav-analytics-link',
   },
   {

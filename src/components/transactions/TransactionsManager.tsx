@@ -55,6 +55,8 @@ export default function TransactionsManager() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [availableMonths, setAvailableMonths] = useState<Array<{ key: string; labelUz: string; startDate: string; endDate: string }>>([]);
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -94,6 +96,29 @@ export default function TransactionsManager() {
       active = false;
     };
   }, []);
+
+  // Fetch user-specific available months timeline
+  useEffect(() => {
+    let active = true;
+    async function loadTimeline() {
+      try {
+        const data = await cachedFetch<{ availableMonths: Array<{ key: string; labelUz: string; startDate: string; endDate: string }> }>(
+          '/api/timeline/available-months',
+          undefined,
+          CACHE_TTL.TRANSACTIONS
+        );
+        if (active && data?.availableMonths) {
+          setAvailableMonths(data.availableMonths);
+        }
+      } catch {
+        // Fallback gracefully
+      }
+    }
+    loadTimeline();
+    return () => {
+      active = false;
+    };
+  }, [reloadTrigger]);
 
   // Fetch transactions with applied filters
   useEffect(() => {
@@ -252,6 +277,7 @@ export default function TransactionsManager() {
     setSearch('');
     setTypeFilter('all');
     setCategoryFilter('all');
+    setSelectedMonth('all');
     setStartDate('');
     setEndDate('');
     setSortBy('date');
@@ -480,43 +506,90 @@ export default function TransactionsManager() {
           </div>
         </div>
 
-        {/* Date Range Row */}
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-3 border-t border-[#D5DED7] text-sm text-[#47544C]">
-          <span className="flex items-center gap-1.5 font-medium text-[#17211B] text-xs sm:text-sm shrink-0">
-            <Calendar className="h-4 w-4 text-[#176B45]" /> Sana oralig‘i:
-          </span>
-          <div className="flex flex-1 sm:flex-initial items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
-            <input
-              id="filter-start-date"
-              aria-label="Boshlanish sanasi"
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setPage(1);
-                setIsLoading(true);
-              }}
-              className="flex-1 sm:flex-initial min-h-[38px] w-full sm:w-36 rounded-xl border border-[#D5DED7] bg-white px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
-            />
-            <span className="text-[#5A675F] shrink-0 text-xs">—</span>
-            <input
-              id="filter-end-date"
-              aria-label="Tugash sanasi"
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPage(1);
-                setIsLoading(true);
-              }}
-              className="flex-1 sm:flex-initial min-h-[38px] w-full sm:w-36 rounded-xl border border-[#D5DED7] bg-white px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
-            />
-          </div>
-          {(startDate || endDate || search || typeFilter !== 'all' || categoryFilter !== 'all') && (
-            <span className="text-[#176B45] text-xs sm:text-sm font-medium w-full sm:w-auto sm:ml-auto">
-              Topildi: {totalCount} ta mos yozuv
-            </span>
+        {/* Date Range & Month Filter Row */}
+        <div className="space-y-2.5 pt-3 border-t border-[#D5DED7] text-sm text-[#47544C]">
+          {availableMonths.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <span className="text-xs font-medium text-[#17211B] shrink-0 mr-1">Oylar:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMonth('all');
+                  setStartDate('');
+                  setEndDate('');
+                  setPage(1);
+                  setIsLoading(true);
+                }}
+                className={`px-2.5 py-1 text-xs rounded-lg transition-all shrink-0 ${
+                  selectedMonth === 'all'
+                    ? 'bg-[#176B45] text-white font-semibold shadow-xs'
+                    : 'bg-[#F7F9F7] text-[#47544C] hover:bg-[#EAEFEA] font-medium'
+                }`}
+              >
+                Barchasi
+              </button>
+              {availableMonths.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => {
+                    setSelectedMonth(m.key);
+                    setStartDate(m.startDate);
+                    setEndDate(m.endDate);
+                    setPage(1);
+                    setIsLoading(true);
+                  }}
+                  className={`px-2.5 py-1 text-xs rounded-lg transition-all shrink-0 ${
+                    selectedMonth === m.key
+                      ? 'bg-[#176B45] text-white font-semibold shadow-xs'
+                      : 'bg-[#F7F9F7] text-[#47544C] hover:bg-[#EAEFEA] font-medium'
+                  }`}
+                >
+                  {m.labelUz}
+                </button>
+              ))}
+            </div>
           )}
+
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <span className="flex items-center gap-1.5 font-medium text-[#17211B] text-xs sm:text-sm shrink-0">
+              <Calendar className="h-4 w-4 text-[#176B45]" /> Maxsus sana:
+            </span>
+            <div className="flex flex-1 sm:flex-initial items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+              <input
+                id="filter-start-date"
+                aria-label="Boshlanish sanasi"
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setSelectedMonth('custom');
+                  setStartDate(e.target.value);
+                  setPage(1);
+                  setIsLoading(true);
+                }}
+                className="flex-1 sm:flex-initial min-h-[38px] w-full sm:w-36 rounded-xl border border-[#D5DED7] bg-white px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
+              />
+              <span className="text-[#5A675F] shrink-0 text-xs">—</span>
+              <input
+                id="filter-end-date"
+                aria-label="Tugash sanasi"
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setSelectedMonth('custom');
+                  setEndDate(e.target.value);
+                  setPage(1);
+                  setIsLoading(true);
+                }}
+                className="flex-1 sm:flex-initial min-h-[38px] w-full sm:w-36 rounded-xl border border-[#D5DED7] bg-white px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-[#17211B] focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all"
+              />
+            </div>
+            {(startDate || endDate || search || typeFilter !== 'all' || categoryFilter !== 'all') && (
+              <span className="text-[#176B45] text-xs sm:text-sm font-medium w-full sm:w-auto sm:ml-auto">
+                Topildi: {totalCount} ta mos yozuv
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

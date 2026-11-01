@@ -70,8 +70,48 @@ export async function getAnalyticsSummary(
       .toISOString()
       .split('T')[0];
 
-    const startDate = parseResult.data.startDate || defaultStart;
-    const endDate = parseResult.data.endDate || defaultEnd;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('financial_start_date')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const userStartDate = profile?.financial_start_date;
+
+    const requestedStart = parseResult.data.startDate || defaultStart;
+    const requestedEnd = parseResult.data.endDate || defaultEnd;
+
+    // If the entire requested window is before the user's financial start date, return empty analytics
+    if (userStartDate && requestedEnd < userStartDate) {
+      return {
+        data: {
+          currency,
+          startDate: requestedStart,
+          endDate: requestedEnd,
+          totalIncome: 0,
+          totalExpenses: 0,
+          netCashFlow: 0,
+          savingsRate: 0,
+          transactionCount: 0,
+          averageTransactionAmount: 0,
+          expenseBreakdown: [],
+          incomeBreakdown: [],
+          trends: [],
+          comparison: {
+            income: { currentTotal: 0, previousTotal: 0, absoluteChange: 0, percentageChange: null },
+            expense: { currentTotal: 0, previousTotal: 0, absoluteChange: 0, percentageChange: null },
+            net: { currentTotal: 0, previousTotal: 0, absoluteChange: 0, percentageChange: null },
+          },
+          largestExpenses: [],
+          largestIncome: [],
+        },
+        error: null,
+        status: 200,
+      };
+    }
+
+    const startDate = userStartDate && requestedStart < userStartDate ? userStartDate : requestedStart;
+    const endDate = requestedEnd;
 
     // 1. Fetch transactions for current period with category join
     const { data: currentTxs, error: txError } = await supabase
@@ -204,29 +244,42 @@ export async function getAnalyticsSummary(
     const prevEnd = new Date(startMs - 86400000).toISOString().split('T')[0];
     const prevStart = new Date(startMs - durationDays * 86400000).toISOString().split('T')[0];
 
-    const { data: prevTxs } = await supabase
-      .from('transactions')
-      .select('amount, type')
-      .eq('user_id', user.id)
-      .eq('currency', currency)
-      .gte('transaction_date', prevStart)
-      .lte('transaction_date', prevEnd);
+    const hasPriorData = !userStartDate || prevEnd >= userStartDate;
 
     let prevIncome = 0;
     let prevExpense = 0;
-    for (const p of prevTxs || []) {
-      const amt = Number(p.amount) || 0;
-      if (p.type === 'income') prevIncome += amt;
-      else prevExpense += amt;
+
+    if (hasPriorData) {
+      const { data: prevTxs } = await supabase
+        .from('transactions')
+        .select('amount, type')
+        .eq('user_id', user.id)
+        .eq('currency', currency)
+        .gte('transaction_date', userStartDate && prevStart < userStartDate ? userStartDate : prevStart)
+        .lte('transaction_date', prevEnd);
+
+      for (const p of prevTxs || []) {
+        const amt = Number(p.amount) || 0;
+        if (p.type === 'income') prevIncome += amt;
+        else prevExpense += amt;
+      }
     }
+
     prevIncome = Math.round(prevIncome * 100) / 100;
     prevExpense = Math.round(prevExpense * 100) / 100;
     const prevNet = Math.round((prevIncome - prevExpense) * 100) / 100;
 
     const makeComparison = (current: number, previous: number): PeriodComparison => {
+      if (!hasPriorData || previous === 0) {
+        return {
+          currentTotal: current,
+          previousTotal: previous,
+          absoluteChange: hasPriorData ? Math.round((current - previous) * 100) / 100 : 0,
+          percentageChange: null,
+        };
+      }
       const absoluteChange = Math.round((current - previous) * 100) / 100;
-      const percentageChange =
-        previous > 0 ? Math.round(((current - previous) / previous) * 10000) / 100 : null;
+      const percentageChange = Math.round(((current - previous) / previous) * 10000) / 100;
       return {
         currentTotal: current,
         previousTotal: previous,

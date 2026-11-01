@@ -51,7 +51,7 @@ const PRIMARY_NAV = [
       path.startsWith('/budgets') ||
       path.startsWith('/goals') ||
       path.startsWith('/insights'),
-    apiToWarm: '/api/analytics?startDate=2026-09-01&endDate=2026-10-31&currency=UZS&interval=month',
+    apiToWarm: '/api/timeline/available-months',
   },
   {
     href: '/advisor',
@@ -160,7 +160,7 @@ export default function AppHeader({ userEmail, userName }: AppHeaderProps) {
       router.prefetch('/budgets');
       router.prefetch('/goals');
       warmCache('/api/transactions?page=1&pageSize=12&sortBy=date&sortDirection=desc');
-      warmCache('/api/analytics?startDate=2026-09-01&endDate=2026-10-31&currency=UZS&interval=month');
+      warmCache('/api/timeline/available-months');
       warmCache('/api/budgets?currency=UZS');
       warmCache('/api/goals?currency=UZS');
       warmCache('/api/categories');

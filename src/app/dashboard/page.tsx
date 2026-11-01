@@ -8,6 +8,7 @@ import DashboardRefreshButton from '@/components/dashboard/DashboardRefreshButto
 import { getCategoryDisplayName } from '@/lib/categories/schemas';
 import { computeBudgetProgress } from '@/lib/budgets/service';
 import type { BudgetWithProgress } from '@/lib/budgets/schemas';
+import { getUserFinancialTimeline } from '@/lib/timeline/financialTimeline';
 import {
   ArrowRight,
   Sparkles,
@@ -242,7 +243,6 @@ async function DashboardContent({
   displayName: string;
 }) {
   const supabase = await createClient();
-  const now = new Date();
 
   // Parallel fetch: profile, all transactions, budgets, goals
   const [profileRes, allTxRes, budgetsRes, goalsRes] = await Promise.all([
@@ -276,6 +276,8 @@ async function DashboardContent({
     redirect('/onboarding');
   }
 
+  const timeline = await getUserFinancialTimeline(userId, supabase);
+
   const allTransactions = allTxRes.data || [];
   const rawBudgets = budgetsRes.data || [];
   const budgets: BudgetWithProgress[] = await Promise.all(
@@ -284,26 +286,12 @@ async function DashboardContent({
   const goals = goalsRes.data || [];
   const userCurrency = 'UZS';
 
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const availableMonths = Array.from(
-    new Set(
-      allTransactions
-        .filter((t) => typeof t?.transaction_date === 'string')
-        .map((t) => t.transaction_date.substring(0, 7))
-    )
-  ).sort().reverse(); // e.g. ['2026-10', '2026-09']
+  const availableMonths = timeline.availableMonthKeys;
 
-  // Determine active month key
-  const currentCalendarMonthKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  // Determine active month key strictly from user's eligible months
   let activeMonthKey = requestedMonth;
-  if (!activeMonthKey) {
-    if (availableMonths.includes(currentCalendarMonthKey)) {
-      activeMonthKey = currentCalendarMonthKey;
-    } else if (availableMonths.length > 0) {
-      activeMonthKey = availableMonths[0]; // e.g. '2026-09'
-    } else {
-      activeMonthKey = currentCalendarMonthKey;
-    }
+  if (!activeMonthKey || (activeMonthKey !== 'all' && !availableMonths.includes(activeMonthKey))) {
+    activeMonthKey = timeline.latestMonthKey || 'empty';
   }
 
   const isAllMonths = activeMonthKey === 'all';
@@ -313,32 +301,29 @@ async function DashboardContent({
   let prevEndDate = '';
   let currentMonthLabel = '';
 
-  const monthNamesUzFull = [
-    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
-  ];
-
-  if (isAllMonths) {
-    const oldest = availableMonths[availableMonths.length - 1] || '2026-09';
-    const newest = availableMonths[0] || '2026-10';
-    startDate = `${oldest}-01`;
-    endDate = `${newest}-31`;
-    currentMonthLabel = `Jami davr (${oldest} — ${newest})`;
+  if (!timeline.hasData || activeMonthKey === 'empty') {
+    currentMonthLabel = 'Boshlang‘ich holat';
+  } else if (isAllMonths) {
+    const oldestItem = timeline.availableMonths[timeline.availableMonths.length - 1];
+    const newestItem = timeline.availableMonths[0];
+    startDate = oldestItem?.startDate || '';
+    endDate = newestItem?.endDate || '';
+    currentMonthLabel = `Jami davr (${timeline.availableMonths.length} oy)`;
   } else {
-    const parts = (activeMonthKey || currentCalendarMonthKey).split('-');
-    const selYear = parseInt(parts[0], 10);
-    const selMonthIndex = parseInt(parts[1], 10) - 1;
+    const monthItem = timeline.availableMonths.find((m) => m.key === activeMonthKey);
+    if (monthItem) {
+      startDate = monthItem.startDate;
+      endDate = monthItem.endDate;
+      currentMonthLabel = monthItem.labelUz;
 
-    startDate = `${selYear}-${pad(selMonthIndex + 1)}-01`;
-    const lastDay = new Date(selYear, selMonthIndex + 1, 0);
-    endDate = `${lastDay.getFullYear()}-${pad(lastDay.getMonth() + 1)}-${pad(lastDay.getDate())}`;
-    currentMonthLabel = `${monthNamesUzFull[selMonthIndex]} ${selYear}`;
-
-    // Prior month boundaries for comparison
-    const prevMonthDate = new Date(selYear, selMonthIndex - 1, 1);
-    prevStartDate = `${prevMonthDate.getFullYear()}-${pad(prevMonthDate.getMonth() + 1)}-01`;
-    const prevLastDay = new Date(selYear, selMonthIndex, 0);
-    prevEndDate = `${prevLastDay.getFullYear()}-${pad(prevLastDay.getMonth() + 1)}-${pad(prevLastDay.getDate())}`;
+      // Legitimate prior month comparison from user's recorded timeline
+      const currentIndex = timeline.availableMonths.findIndex((m) => m.key === activeMonthKey);
+      const prevMonthItem = timeline.availableMonths[currentIndex + 1];
+      if (prevMonthItem) {
+        prevStartDate = prevMonthItem.startDate;
+        prevEndDate = prevMonthItem.endDate;
+      }
+    }
   }
 
   // Calculate Balances & Monthly Totals
@@ -348,20 +333,12 @@ async function DashboardContent({
   let prevMonthlyIncome = 0;
   let prevMonthlyExpenses = 0;
 
-  // Monthly buckets for 6-Month Chart
+  // Monthly buckets for Chart: only eligible months with real recorded activity
+  const chartMonths = [...timeline.availableMonths].reverse().slice(-6);
   const monthBuckets: Record<string, { label: string; income: number; expense: number }> = {};
-  const monthNamesUzShort = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
-
-  const chartCenterDate = !isAllMonths && activeMonthKey
-    ? new Date(parseInt(activeMonthKey.split('-')[0]), parseInt(activeMonthKey.split('-')[1]) - 1, 1)
-    : (availableMonths[0] ? new Date(parseInt(availableMonths[0].split('-')[0]), parseInt(availableMonths[0].split('-')[1]) - 1, 1) : now);
-
-  const endChartDate = new Date(Math.max(chartCenterDate.getTime(), new Date(now.getFullYear(), now.getMonth(), 1).getTime()));
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(endChartDate.getFullYear(), endChartDate.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-    monthBuckets[key] = {
-      label: monthNamesUzShort[d.getMonth()],
+  for (const m of chartMonths) {
+    monthBuckets[m.key] = {
+      label: m.shortLabelUz,
       income: 0,
       expense: 0,
     };
@@ -505,45 +482,45 @@ async function DashboardContent({
           <div className="hidden sm:inline-flex">
             <DashboardRefreshButton />
           </div>
-          {/* Historical Month Selector Pills */}
-          <div className="inline-flex items-center gap-1 p-1 bg-white rounded-full border border-[#E5E7EB] text-sm shadow-xs max-w-full overflow-x-auto no-scrollbar">
-            <Link
-              href="/dashboard?month=2026-10"
-              prefetch={true}
-              className={`px-3 py-1 text-xs rounded-full transition-all min-h-[30px] flex items-center ${
-                activeMonthKey === '2026-10'
-                  ? 'font-semibold bg-[#176B45] text-white shadow-xs'
-                  : 'font-medium text-[#52525B] hover:text-[#18181B] hover:bg-black/5'
-              }`}
-              title="Oktabr 2026 hisoboti"
-            >
-              Oktabr 2026
-            </Link>
-            <Link
-              href="/dashboard?month=2026-09"
-              prefetch={true}
-              className={`px-3 py-1 text-xs rounded-full transition-all min-h-[30px] flex items-center ${
-                activeMonthKey === '2026-09'
-                  ? 'font-semibold bg-[#176B45] text-white shadow-xs'
-                  : 'font-medium text-[#52525B] hover:text-[#18181B] hover:bg-black/5'
-              }`}
-              title="Sentabr 2026 hisoboti"
-            >
-              Sentabr 2026
-            </Link>
-            <Link
-              href="/dashboard?month=all"
-              prefetch={true}
-              className={`px-3 py-1 text-xs rounded-full transition-all min-h-[30px] flex items-center ${
-                activeMonthKey === 'all'
-                  ? 'font-semibold bg-[#176B45] text-white shadow-xs'
-                  : 'font-medium text-[#52525B] hover:text-[#18181B] hover:bg-black/5'
-              }`}
-              title="2 oylik umumiy hisobot"
-            >
-              Jami (2 oy)
-            </Link>
-          </div>
+          {/* Dynamic User-Specific Month Selector Pills */}
+          {timeline.hasData && (
+            <div className="inline-flex items-center gap-1 p-1 bg-white rounded-full border border-[#E5E7EB] text-sm shadow-xs max-w-full overflow-x-auto no-scrollbar">
+              {timeline.availableMonths.map((m) => (
+                <Link
+                  key={m.key}
+                  href={`/dashboard?month=${m.key}`}
+                  prefetch={true}
+                  className={`px-3 py-1 text-xs rounded-full transition-all min-h-[30px] flex items-center shrink-0 ${
+                    activeMonthKey === m.key
+                      ? 'font-semibold bg-[#176B45] text-white shadow-xs'
+                      : 'font-medium text-[#52525B] hover:text-[#18181B] hover:bg-black/5'
+                  }`}
+                  title={`${m.labelUz} hisoboti`}
+                >
+                  {m.labelUz}
+                </Link>
+              ))}
+              {timeline.availableMonths.length > 1 && (
+                <Link
+                  href="/dashboard?month=all"
+                  prefetch={true}
+                  className={`px-3 py-1 text-xs rounded-full transition-all min-h-[30px] flex items-center shrink-0 ${
+                    activeMonthKey === 'all'
+                      ? 'font-semibold bg-[#176B45] text-white shadow-xs'
+                      : 'font-medium text-[#52525B] hover:text-[#18181B] hover:bg-black/5'
+                  }`}
+                  title={`Jami (${timeline.availableMonths.length} oy) umumiy hisobot`}
+                >
+                  Jami ({timeline.availableMonths.length} oy)
+                </Link>
+              )}
+            </div>
+          )}
+          {!timeline.hasData && (
+            <span className="px-3 py-1 text-xs font-medium rounded-full bg-[#F5F6F8] text-[#71717A] border border-[#E5E7EB]">
+              Yangi hisob
+            </span>
+          )}
         </div>
       </div>
 
@@ -884,22 +861,22 @@ async function DashboardContent({
             </div>
           </div>
 
-          {allTransactions.length === 0 ? (
+          {chartList.length === 0 ? (
             <div className="py-12 px-4 text-center rounded-xl bg-[#F9FAFB] border border-dashed border-[#E5E7EB] space-y-2">
               <p className="font-medium text-sm text-[#18181B]">Pul oqimi grafigi shakllanmoqda</p>
               <p className="text-xs text-[#71717A] max-w-sm mx-auto">
-                Tranzaksiyalaringizni kiritganingizdan so‘ng, 6 oylik dinamika grafigi paydo bo‘ladi.
+                Tranzaksiyalaringizni kiritganingizdan so‘ng, dinamika grafigi paydo bo‘ladi.
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-6 gap-3 sm:gap-6 items-end h-48 pt-4 pb-2 border-b border-[#E5E7EB]">
+              <div className="flex items-end justify-around gap-3 sm:gap-6 h-48 pt-4 pb-2 border-b border-[#E5E7EB]">
                 {chartList.map((item, idx) => {
-                  const incHeight = Math.max(6, (item.income / maxChartValue) * 100);
-                  const expHeight = Math.max(6, (item.expense / maxChartValue) * 100);
+                  const incHeight = maxChartValue > 0 ? Math.max(6, (item.income / maxChartValue) * 100) : 6;
+                  const expHeight = maxChartValue > 0 ? Math.max(6, (item.expense / maxChartValue) * 100) : 6;
 
                   return (
-                    <div key={idx} className="flex flex-col items-center justify-end h-full group">
+                    <div key={idx} className="flex flex-col items-center justify-end h-full flex-1 max-w-[80px] group">
                       <div className="w-full flex items-end justify-center gap-1.5 h-36">
                         <div
                           className="w-1/2 max-w-[18px] bg-[#10B981] rounded-t-sm transition-all duration-300 hover:opacity-85"
@@ -912,7 +889,7 @@ async function DashboardContent({
                           title={`Chiqim: ${formatCurrency(item.expense)}`}
                         />
                       </div>
-                      <span className="text-xs text-[#71717A] mt-2 group-hover:text-[#18181B] transition-colors">
+                      <span className="text-xs text-[#71717A] mt-2 group-hover:text-[#18181B] transition-colors whitespace-nowrap">
                         {item.label}
                       </span>
                     </div>

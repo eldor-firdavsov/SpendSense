@@ -275,6 +275,26 @@ export async function commitImport(
       }
 
       importedCount = inserted?.length || 0;
+
+      // Update user financial_start_date if not set or if earliest imported date is earlier
+      if (payload.length > 0) {
+        const minImportedDate = payload.reduce(
+          (min, p) => (p.transaction_date < min ? p.transaction_date : min),
+          payload[0].transaction_date
+        );
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('financial_start_date')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!profile?.financial_start_date || minImportedDate < profile.financial_start_date) {
+          await supabase
+            .from('profiles')
+            .update({ financial_start_date: minImportedDate })
+            .eq('id', user.id);
+        }
+      }
     }
 
     // 4. Update import_jobs with final counts

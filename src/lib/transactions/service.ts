@@ -116,6 +116,20 @@ export async function createTransaction(
       };
     }
 
+    // Update user financial_start_date if not set or if new transaction is earlier
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('financial_start_date')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile?.financial_start_date || validData.transaction_date < profile.financial_start_date) {
+      await supabase
+        .from('profiles')
+        .update({ financial_start_date: validData.transaction_date })
+        .eq('id', user.id);
+    }
+
     return { data: created as TransactionWithCategory, error: null, status: 201 };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal server error';
@@ -158,9 +172,21 @@ export async function listTransactions(
       .select('*, categories(id, name, type, icon, color)', { count: 'exact' })
       .eq('user_id', user.id);
 
+    // Enforce user financial_start_date
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('financial_start_date')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const effectiveStart = profile?.financial_start_date;
+    const activeStartDate = filters.startDate
+      ? (effectiveStart && filters.startDate < effectiveStart ? effectiveStart : filters.startDate)
+      : effectiveStart;
+
     // Apply filters
-    if (filters.startDate) {
-      query = query.gte('transaction_date', filters.startDate);
+    if (activeStartDate) {
+      query = query.gte('transaction_date', activeStartDate);
     }
     if (filters.endDate) {
       query = query.lte('transaction_date', filters.endDate);

@@ -144,7 +144,17 @@ export async function completeOnboardingAction(
       goals,
     } = validated.data;
 
-    // 1. Update user profile
+    // 1. Fetch existing profile to preserve existing financial_start_date if present
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('financial_start_date')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const effectiveFinancialStartDate = existingProfile?.financial_start_date || todayDateStr;
+
+    // 2. Update user profile
     const { error: profileUpdateErr } = await supabase
       .from('profiles')
       .update({
@@ -154,6 +164,7 @@ export async function completeOnboardingAction(
         declared_monthly_expenses,
         target_expense_reduction_percent,
         target_monthly_expenses,
+        financial_start_date: effectiveFinancialStartDate,
         onboarding_completed: true,
         onboarding_step: 6,
         onboarding_data: null,

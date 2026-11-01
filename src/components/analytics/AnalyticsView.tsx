@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   TrendingUp,
   TrendingDown,
@@ -9,6 +10,7 @@ import {
   AlertCircle,
   RefreshCw,
   Sparkles,
+  PlusCircle,
 } from 'lucide-react';
 import type { AnalyticsSummary } from '@/lib/analytics/schemas';
 import {
@@ -22,67 +24,131 @@ import { cachedFetch, peekCache, invalidateCache, CACHE_TTL } from '@/lib/cache/
 import { getCategoryDisplayName } from '@/lib/categories/schemas';
 import { MetricCardSkeleton, ChartSkeleton, Skeleton } from '@/components/ui/Skeleton';
 
-const getInitialDates = () => {
-  return {
-    startDate: '2026-09-01',
-    endDate: '2026-10-31',
-  };
-};
+interface AvailableMonth {
+  key: string;
+  year: number;
+  month: number;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface TimelineData {
+  financialStartDate: string | null;
+  hasData: boolean;
+  totalTransactions: number;
+  availableMonths: AvailableMonth[];
+  availableMonthKeys: string[];
+  currentMonthKey: string;
+}
 
 export default function AnalyticsView() {
   const currency = 'UZS';
-  const [preset, setPreset] = useState<'demo2m' | 'month' | '30d' | '90d' | 'ytd' | 'custom'>('demo2m');
-  const [initialDates] = useState(getInitialDates);
-  const [startDate, setStartDate] = useState(initialDates.startDate);
-  const [endDate, setEndDate] = useState(initialDates.endDate);
+  const initialTimeline = peekCache<TimelineData>('/api/timeline/available-months');
+  const [timeline, setTimeline] = useState<TimelineData | null>(() => initialTimeline || null);
+  const [timelineLoading, setTimelineLoading] = useState(() => !initialTimeline);
+
+  const initialLatestMonth = initialTimeline?.availableMonths?.[0];
+  const [preset, setPreset] = useState<string>(() => (initialLatestMonth ? initialLatestMonth.key : 'all'));
+  const [startDate, setStartDate] = useState<string>(() => (initialLatestMonth ? initialLatestMonth.startDate : ''));
+  const [endDate, setEndDate] = useState<string>(() => (initialLatestMonth ? initialLatestMonth.endDate : ''));
   const [breakdownType, setBreakdownType] = useState<'expense' | 'income'>('expense');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Check initial cache for 0ms navigation
-  const defaultAnalyticsUrl = `/api/analytics?startDate=2026-09-01&endDate=2026-10-31&currency=UZS&interval=month`;
-  const initialCached = peekCache<{ analytics: AnalyticsSummary }>(defaultAnalyticsUrl);
-
-  const [loading, setLoading] = useState(() => !initialCached);
+  const [loading, setLoading] = useState(true);
   const [isRevalidating, setIsRevalidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<AnalyticsSummary | null>(() => initialCached?.analytics || null);
+  const [data, setData] = useState<AnalyticsSummary | null>(null);
 
-  // Compute preset dates on user button click
-  const applyPreset = (p: 'demo2m' | 'month' | '30d' | '90d' | 'ytd' | 'custom') => {
-    setPreset(p);
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const toYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  // 1. Fetch user timeline: only eligible months with real records
+  useEffect(() => {
+    let isCancelled = false;
 
-    if (p === 'demo2m') {
-      setStartDate('2026-09-01');
-      setEndDate('2026-10-31');
-    } else if (p === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      setStartDate(toYMD(start));
-      setEndDate(toYMD(end));
-    } else if (p === '30d') {
-      const start = new Date();
-      start.setDate(now.getDate() - 30);
-      setStartDate(toYMD(start));
-      setEndDate(toYMD(now));
-    } else if (p === '90d') {
-      const start = new Date();
-      start.setDate(now.getDate() - 90);
-      setStartDate(toYMD(start));
-      setEndDate(toYMD(now));
-    } else if (p === 'ytd') {
-      const start = new Date(now.getFullYear(), 0, 1);
-      setStartDate(toYMD(start));
-      setEndDate(toYMD(now));
+    async function loadTimeline() {
+      try {
+        if (refreshTrigger > 0) {
+          invalidateCache('/api/timeline/available-months');
+        }
+        const tl = await cachedFetch<TimelineData>(
+          '/api/timeline/available-months',
+          undefined,
+          CACHE_TTL.TRANSACTIONS
+        );
+        if (!isCancelled) {
+          setTimeline(tl);
+          setTimelineLoading(false);
+
+          if (tl.hasData && tl.availableMonths.length > 0) {
+            setStartDate((prev) => {
+              if (prev && tl.availableMonths.some((m) => m.startDate <= prev && prev <= m.endDate)) {
+                return prev;
+              }
+              return tl.availableMonths[0].startDate;
+            });
+            setEndDate((prev) => {
+              if (prev && tl.availableMonths.some((m) => m.startDate <= prev && prev <= m.endDate)) {
+                return prev;
+              }
+              return tl.availableMonths[0].endDate;
+            });
+            setPreset((prev) => {
+              if (prev && (prev === 'all' || prev === '30d' || tl.availableMonths.some((m) => m.key === prev))) {
+                return prev;
+              }
+              return tl.availableMonths[0].key;
+            });
+          }
+        }
+      } catch {
+        if (!isCancelled) {
+          setTimelineLoading(false);
+        }
+      }
     }
-  };
 
+    loadTimeline();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [refreshTrigger]);
+
+  // 2. Fetch analytics for the selected eligible date range
   useEffect(() => {
     let isCancelled = false;
 
     async function loadAnalytics() {
+      if (timeline && !timeline.hasData) {
+        setData({
+          currency,
+          startDate: '',
+          endDate: '',
+          totalIncome: 0,
+          totalExpenses: 0,
+          netCashFlow: 0,
+          savingsRate: 0,
+          transactionCount: 0,
+          averageTransactionAmount: 0,
+          expenseBreakdown: [],
+          incomeBreakdown: [],
+          trends: [],
+          comparison: {
+            income: { currentTotal: 0, previousTotal: 0, absoluteChange: 0, percentageChange: null },
+            expense: { currentTotal: 0, previousTotal: 0, absoluteChange: 0, percentageChange: null },
+            net: { currentTotal: 0, previousTotal: 0, absoluteChange: 0, percentageChange: null },
+          },
+          largestExpenses: [],
+          largestIncome: [],
+        });
+        setLoading(false);
+        setIsRevalidating(false);
+        return;
+      }
+
+      if (!startDate || !endDate) {
+        return;
+      }
+
       try {
         const params = new URLSearchParams({
           startDate,
@@ -100,7 +166,7 @@ export default function AnalyticsView() {
           setError(null);
           setLoading(false);
           setIsRevalidating(true);
-        } else if (!data) {
+        } else {
           setLoading(true);
         }
 
@@ -124,16 +190,17 @@ export default function AnalyticsView() {
       }
     }
 
-    if (startDate && endDate) {
+    if (!timelineLoading) {
       loadAnalytics();
     }
 
     return () => {
       isCancelled = true;
     };
-  }, [startDate, endDate, refreshTrigger]);
+  }, [startDate, endDate, refreshTrigger, timeline, timelineLoading]);
 
   const handleRefresh = () => {
+    invalidateCache('/api/timeline/available-months');
     invalidateCache('/api/analytics');
     setLoading(true);
     setRefreshTrigger((prev) => prev + 1);
@@ -142,6 +209,8 @@ export default function AnalyticsView() {
   const formatCurrency = (amount: number) => {
     return `${new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(Math.round(amount))} soʻm`;
   };
+
+  const isZeroState = !timelineLoading && timeline && !timeline.hasData;
 
   return (
     <div className="space-y-6">
@@ -153,86 +222,130 @@ export default function AnalyticsView() {
         refreshId="analytics-page-header-refresh-btn"
       />
 
-      {/* Filter and Period Selector Controls */}
-      <div className="rounded-2xl border border-[#D5DED7] bg-white p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 shadow-fintech-card">
-        <div className="flex items-center justify-between gap-2.5">
-          {/* Preset Buttons: Smooth horizontal scroll on mobile */}
-          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none py-0.5">
-            <div className="inline-flex items-center gap-1 rounded-xl border border-[#D5DED7] p-1 bg-[#F7F9F7] text-xs sm:text-sm">
-              {(['demo2m', 'month', '30d', '90d', 'ytd'] as const).map((p) => {
-                const labels = {
-                  demo2m: 'Sen-Okt (2 oy)',
-                  month: 'Shu oy',
-                  '30d': '30 kun',
-                  '90d': '90 kun',
-                  ytd: 'Yil boshidan',
-                };
-                return (
+      {/* Filter and Period Selector Controls: Displayed only if real data exists */}
+      {!isZeroState && (
+        <div className="rounded-2xl border border-[#D5DED7] bg-white p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 shadow-fintech-card">
+          <div className="flex items-center justify-between gap-2.5">
+            {/* Dynamic Preset Buttons based on actual recorded timeline */}
+            <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none py-0.5">
+              <div className="inline-flex items-center gap-1 rounded-xl border border-[#D5DED7] p-1 bg-[#F7F9F7] text-xs sm:text-sm">
+                {timeline?.availableMonths && timeline.availableMonths.length > 1 && (
                   <button
-                    key={p}
-                    id={`preset-${p}-btn`}
+                    id="preset-all-btn"
                     type="button"
-                    onClick={() => applyPreset(p)}
+                    onClick={() => {
+                      const earliest = timeline.availableMonths[timeline.availableMonths.length - 1];
+                      const latest = timeline.availableMonths[0];
+                      setPreset('all');
+                      setLoading(true);
+                      setStartDate(earliest.startDate);
+                      setEndDate(latest.endDate);
+                    }}
                     className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-all whitespace-nowrap text-xs sm:text-sm ${
-                      preset === p
+                      preset === 'all'
                         ? 'bg-[#176B45] text-white shadow-xs font-semibold'
                         : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
                     }`}
                   >
-                    {labels[p]}
+                    Barcha davr
                   </button>
-                );
-              })}
+                )}
+
+                {timeline?.availableMonths.map((m) => (
+                  <button
+                    key={m.key}
+                    id={`preset-month-${m.key}-btn`}
+                    type="button"
+                    onClick={() => {
+                      setPreset(m.key);
+                      setLoading(true);
+                      setStartDate(m.startDate);
+                      setEndDate(m.endDate);
+                    }}
+                    className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-all whitespace-nowrap text-xs sm:text-sm ${
+                      preset === m.key
+                        ? 'bg-[#176B45] text-white shadow-xs font-semibold'
+                        : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+
+                <button
+                  id="preset-30d-btn"
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    const start = new Date();
+                    start.setDate(now.getDate() - 30);
+                    const pad = (n: number) => String(n).padStart(2, '0');
+                    const toYMD = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                    setPreset('30d');
+                    setLoading(true);
+                    setStartDate(toYMD(start));
+                    setEndDate(toYMD(now));
+                  }}
+                  className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-all whitespace-nowrap text-xs sm:text-sm ${
+                    preset === '30d'
+                      ? 'bg-[#176B45] text-white shadow-xs font-semibold'
+                      : 'text-[#47544C] font-medium hover:text-[#17211B] hover:bg-black/5'
+                  }`}
+                >
+                  30 kun
+                </button>
+              </div>
+            </div>
+
+            {/* Refresh Button */}
+            <button
+              id="analytics-refresh-btn"
+              type="button"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="min-h-[38px] min-w-[38px] sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center p-2 rounded-xl bg-white text-[#47544C] hover:text-[#17211B] border border-[#D5DED7] hover:bg-[#F7F9F7] transition-colors disabled:opacity-50 shrink-0 shadow-2xs"
+              title="Tahlilni yangilash"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-[#176B45]' : ''}`} />
+            </button>
+          </div>
+
+          {/* Custom Date Range Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 pt-3 border-t border-[#D5DED7] text-xs sm:text-sm text-[#47544C]">
+            <span className="flex items-center gap-1.5 font-medium text-[#17211B] shrink-0">
+              <Calendar className="h-4 w-4 text-[#176B45]" /> Davr:
+            </span>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full sm:w-auto">
+              <input
+                id="analytics-start-date"
+                aria-label="Boshlanish sanasi"
+                type="date"
+                min={timeline?.financialStartDate || undefined}
+                value={startDate}
+                onChange={(e) => {
+                  setPreset('custom');
+                  setLoading(true);
+                  setStartDate(e.target.value);
+                }}
+                className="w-full min-w-0 border border-[#D5DED7] rounded-xl px-2.5 sm:px-3 py-1.5 min-h-[38px] text-[#17211B] text-xs sm:text-sm text-center sm:text-left focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all bg-white"
+              />
+              <span className="text-[#5A675F] font-medium text-center px-0.5">—</span>
+              <input
+                id="analytics-end-date"
+                aria-label="Tugash sanasi"
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setPreset('custom');
+                  setLoading(true);
+                  setEndDate(e.target.value);
+                }}
+                className="w-full min-w-0 border border-[#D5DED7] rounded-xl px-2.5 sm:px-3 py-1.5 min-h-[38px] text-[#17211B] text-xs sm:text-sm text-center sm:text-left focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all bg-white"
+              />
             </div>
           </div>
-
-          {/* Refresh Button: Always on the right, perfectly aligned */}
-          <button
-            id="analytics-refresh-btn"
-            type="button"
-            onClick={handleRefresh}
-            disabled={loading}
-            className="min-h-[38px] min-w-[38px] sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center p-2 rounded-xl bg-white text-[#47544C] hover:text-[#17211B] border border-[#D5DED7] hover:bg-[#F7F9F7] transition-colors disabled:opacity-50 shrink-0 shadow-2xs"
-            title="Tahlilni yangilash"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-[#176B45]' : ''}`} />
-          </button>
         </div>
-
-        {/* Custom Date Range Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 pt-3 border-t border-[#D5DED7] text-xs sm:text-sm text-[#47544C]">
-          <span className="flex items-center gap-1.5 font-medium text-[#17211B] shrink-0">
-            <Calendar className="h-4 w-4 text-[#176B45]" /> Davr:
-          </span>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full sm:w-auto">
-            <input
-              id="analytics-start-date"
-              aria-label="Boshlanish sanasi"
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setPreset('custom');
-                setLoading(true);
-                setStartDate(e.target.value);
-              }}
-              className="w-full min-w-0 border border-[#D5DED7] rounded-xl px-2.5 sm:px-3 py-1.5 min-h-[38px] text-[#17211B] text-xs sm:text-sm text-center sm:text-left focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all bg-white"
-            />
-            <span className="text-[#5A675F] font-medium text-center px-0.5">—</span>
-            <input
-              id="analytics-end-date"
-              aria-label="Tugash sanasi"
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setPreset('custom');
-                setLoading(true);
-                setEndDate(e.target.value);
-              }}
-              className="w-full min-w-0 border border-[#D5DED7] rounded-xl px-2.5 sm:px-3 py-1.5 min-h-[38px] text-[#17211B] text-xs sm:text-sm text-center sm:text-left focus:border-[#176B45] focus:outline-none focus:ring-2 focus:ring-[#176B45]/20 transition-all bg-white"
-            />
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Error Banner with Retry */}
       {error && (
@@ -305,12 +418,14 @@ export default function AnalyticsView() {
               accent="green"
               icon={<TrendingUp className="h-4 w-4" />}
               subtext={
-                data.comparison.income.percentageChange !== null
+                isZeroState
+                  ? 'Hozircha yozuvlar yo‘q'
+                  : data.comparison.income.percentageChange !== null
                   ? `${data.comparison.income.percentageChange >= 0 ? '+' : ''}${data.comparison.income.percentageChange}% o‘tgan davrga nisbatan`
                   : 'Tanlangan oraliq bo‘yicha'
               }
               delta={
-                data.comparison.income.percentageChange !== null
+                !isZeroState && data.comparison.income.percentageChange !== null
                   ? {
                       value: `${Math.abs(data.comparison.income.percentageChange)}%`,
                       trend: data.comparison.income.percentageChange >= 0 ? 'up' : 'down',
@@ -326,12 +441,14 @@ export default function AnalyticsView() {
               accent="red"
               icon={<TrendingDown className="h-4 w-4" />}
               subtext={
-                data.comparison.expense.percentageChange !== null
+                isZeroState
+                  ? 'Hozircha yozuvlar yo‘q'
+                  : data.comparison.expense.percentageChange !== null
                   ? `${data.comparison.expense.percentageChange >= 0 ? '+' : ''}${data.comparison.expense.percentageChange}% o‘tgan davrga nisbatan`
                   : 'Tanlangan oraliq bo‘yicha'
               }
               delta={
-                data.comparison.expense.percentageChange !== null
+                !isZeroState && data.comparison.expense.percentageChange !== null
                   ? {
                       value: `${Math.abs(data.comparison.expense.percentageChange)}%`,
                       trend: data.comparison.expense.percentageChange <= 0 ? 'up' : 'down',
@@ -351,7 +468,13 @@ export default function AnalyticsView() {
               }
               accent={data.netCashFlow >= 0 ? 'green' : 'red'}
               icon={<Wallet className="h-4 w-4" />}
-              subtext={data.netCashFlow >= 0 ? 'Ijobiy moliyaviy saldo' : 'Xarajat daromaddan oshdi'}
+              subtext={
+                isZeroState
+                  ? 'Boshlang‘ich holat'
+                  : data.netCashFlow >= 0
+                  ? 'Ijobiy moliyaviy saldo'
+                  : 'Xarajat daromaddan oshdi'
+              }
             />
           </BentoGrid>
 
@@ -362,7 +485,33 @@ export default function AnalyticsView() {
             <span id="stat-avg-amount">{formatCurrency(data.averageTransactionAmount)}</span>
           </div>
 
-          {/* Concise Summary Based on Actual Records via BentoInsightCard */}
+          {/* If Zero State, show clean Empty State Container */}
+          {isZeroState ? (
+            <div className="rounded-2xl border border-[#D5DED7] bg-white p-8 sm:p-12 text-center space-y-4 shadow-fintech-card">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-[#EAF5EF] text-[#176B45] flex items-center justify-center border border-[#176B45]/20 shadow-xs">
+                <Sparkles className="h-7 w-7" />
+              </div>
+              <div className="space-y-1.5 max-w-md mx-auto">
+                <h3 className="text-lg sm:text-xl font-bold text-[#17211B]">
+                  Moliyaviy ma’lumotlar mavjud emas
+                </h3>
+                <p className="text-sm text-[#5A675F] leading-relaxed">
+                  Sizda hozircha birorta ham daromad yoki xarajat yozuvlari mavjud emas. Birinchi tranzaksiyangiz qo‘shilgandan so‘ng tahlil, xarajatlar taqsimoti va dinamika grafiklari bu yerda ko‘rsatiladi.
+                </p>
+              </div>
+              <div className="pt-2">
+                <Link
+                  href="/transactions"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#176B45] hover:bg-[#125335] text-white font-semibold text-sm transition-colors shadow-xs"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  <span>Tranzaksiya qo‘shish</span>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Concise Summary Based on Actual Records via BentoInsightCard */}
           <BentoInsightCard
             title="Davr bo‘yicha tahliliy xulosa"
             eyebrow="Moliyaviy xulosa"
@@ -519,6 +668,8 @@ export default function AnalyticsView() {
           </BentoGrid>
         </>
       )}
-    </div>
+    </>
+  )}
+</div>
   );
 }

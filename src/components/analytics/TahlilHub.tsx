@@ -76,9 +76,9 @@ export default function TahlilHub({ initialTab = 'analytics' }: TahlilHubProps) 
             id="tab-btn-analytics"
             aria-selected={activeTab === 'analytics'}
             onClick={() => handleTabChange('analytics')}
-            onMouseEnter={() => warmCache('/api/analytics?startDate=2026-09-01&endDate=2026-10-31&currency=UZS&interval=month')}
-            onFocus={() => warmCache('/api/analytics?startDate=2026-09-01&endDate=2026-10-31&currency=UZS&interval=month')}
-            onTouchStart={() => warmCache('/api/analytics?startDate=2026-09-01&endDate=2026-10-31&currency=UZS&interval=month')}
+            onMouseEnter={() => warmCache('/api/timeline/available-months')}
+            onFocus={() => warmCache('/api/timeline/available-months')}
+            onTouchStart={() => warmCache('/api/timeline/available-months')}
             className={`px-2 sm:px-4 py-2 min-h-[40px] rounded-lg transition-all font-semibold flex items-center justify-center gap-1.5 sm:gap-2 text-center text-xs sm:text-sm ${
               activeTab === 'analytics'
                 ? 'bg-[#176B45] text-white shadow-xs'

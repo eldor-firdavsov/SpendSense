@@ -38,6 +38,7 @@ export interface Profile {
   onboarding_completed?: boolean;
   onboarding_step?: number;
   onboarding_data?: Record<string, unknown> | null;
+  financial_start_date?: string | null;
   created_at: string;
   updated_at: string;
 }
