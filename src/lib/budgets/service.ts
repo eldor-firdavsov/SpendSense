@@ -26,7 +26,7 @@ async function resolveClient(providedClient?: SupabaseClient): Promise<SupabaseC
 /**
  * Computes progress and status for a given budget record
  */
-async function computeBudgetProgress(
+export async function computeBudgetProgress(
   budget: Budget & {
     categories?:
       | { id: string; name: string; type: string; color: string | null; icon: string | null }
@@ -42,9 +42,14 @@ async function computeBudgetProgress(
     .select('amount')
     .eq('user_id', budget.user_id)
     .eq('currency', budget.currency)
-    .eq('type', 'expense')
-    .gte('transaction_date', budget.start_date)
-    .lte('transaction_date', budget.end_date);
+    .eq('type', 'expense');
+
+  if (budget.start_date) {
+    query = query.gte('transaction_date', budget.start_date);
+  }
+  if (budget.end_date) {
+    query = query.lte('transaction_date', budget.end_date);
+  }
 
   if (budget.category_id) {
     query = query.eq('category_id', budget.category_id);

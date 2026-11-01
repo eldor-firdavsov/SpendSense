@@ -6,6 +6,8 @@ import AppHeader from '@/components/navigation/AppHeader';
 import DashboardSkeleton from '@/components/dashboard/DashboardSkeleton';
 import DashboardRefreshButton from '@/components/dashboard/DashboardRefreshButton';
 import { getCategoryDisplayName } from '@/lib/categories/schemas';
+import { computeBudgetProgress } from '@/lib/budgets/service';
+import type { BudgetWithProgress } from '@/lib/budgets/schemas';
 import {
   ArrowRight,
   Sparkles,
@@ -258,9 +260,10 @@ async function DashboardContent({
       .limit(300),
     supabase
       .from('budgets')
-      .select('id, name, amount, currency, categories(name, color)')
+      .select('*, categories(id, name, type, icon, color)')
       .eq('user_id', userId)
-      .limit(3),
+      .order('created_at', { ascending: false })
+      .limit(4),
     supabase
       .from('financial_goals')
       .select('id, name, target_amount, current_amount, currency, target_date, status')
@@ -274,7 +277,10 @@ async function DashboardContent({
   }
 
   const allTransactions = allTxRes.data || [];
-  const budgets = budgetsRes.data || [];
+  const rawBudgets = budgetsRes.data || [];
+  const budgets: BudgetWithProgress[] = await Promise.all(
+    rawBudgets.map((b) => computeBudgetProgress(b, supabase))
+  );
   const goals = goalsRes.data || [];
   const userCurrency = 'UZS';
 
@@ -455,7 +461,10 @@ async function DashboardContent({
 
   const topCategory = sortedCategories[0];
 
-  const formatCurrency = (amt: number) => {
+  const formatCurrency = (amt: number, curr: string = 'UZS') => {
+    if (curr === 'USD') {
+      return `$${new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amt)}`;
+    }
     return `${new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(Math.round(amt))} soʻm`;
   };
 
@@ -1091,17 +1100,61 @@ async function DashboardContent({
               </p>
             ) : (
               <div className="space-y-3">
-                {budgets.map((b) => (
-                  <div key={b.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[#18181B] font-medium">{b.name}</span>
-                      <span className="font-mono text-[#52525B] tabular-nums">{formatCurrency(Number(b.amount))}</span>
+                {budgets.map((b) => {
+                  const spent = Number(b.spent) || 0;
+                  const limit = Number(b.amount) || 0;
+                  const remaining = Math.round((limit - spent) * 100) / 100;
+                  const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+                  const isOver = spent > limit;
+                  const isNear = !isOver && pct >= 80;
+
+                  return (
+                    <div key={b.id} className="space-y-1.5 p-2 rounded-xl hover:bg-[#F9FAFB] transition-colors">
+                      {/* Row 1: Name and Exact Spending vs Limit */}
+                      <div className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-[#18181B] font-medium truncate max-w-[150px]" title={b.name}>
+                          {b.name}
+                        </span>
+                        <div className="font-mono text-right shrink-0 tabular-nums">
+                          <span className={`font-semibold ${isOver ? 'text-[#DC2626]' : 'text-[#18181B]'}`}>
+                            {formatCurrency(spent, b.currency)}
+                          </span>
+                          <span className="text-[#71717A] text-[11px]"> / {formatCurrency(limit, b.currency)}</span>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Progress Bar */}
+                      <div className="h-1.5 w-full bg-[#F5F6F8] rounded-full overflow-hidden border border-[#E5E7EB]/50">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            isOver ? 'bg-[#DC2626]' : isNear ? 'bg-[#D97706]' : 'bg-[#059669]'
+                          }`}
+                          style={{ width: `${Math.min(100, pct)}%` }}
+                        />
+                      </div>
+
+                      {/* Row 3: Percentage and Remaining / Over budget */}
+                      <div className="flex items-center justify-between text-[11px] font-mono tabular-nums">
+                        <span
+                          className={`font-medium ${
+                            isOver ? 'text-[#DC2626]' : isNear ? 'text-[#D97706]' : 'text-[#71717A]'
+                          }`}
+                        >
+                          {pct}% sarflandi
+                        </span>
+                        <span
+                          className={`font-medium ${
+                            isOver ? 'text-[#DC2626]' : 'text-[#059669]'
+                          }`}
+                        >
+                          {isOver
+                            ? `+${formatCurrency(Math.abs(remaining), b.currency)} oshdi`
+                            : `${formatCurrency(remaining, b.currency)} qoldi`}
+                        </span>
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full bg-[#F5F6F8] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#18181B] rounded-full w-2/3" />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
